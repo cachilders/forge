@@ -1,18 +1,10 @@
 -- Staff Engineer
 -- Crow
 -- 16bit [-5V,10V] range
--- 128 x 64 
---
--- MVP:
--- [x] events_per_second = 1000 (resolution of oscilloscope)
--- [x] cycles[1] and cycles[2] (arrays of length == events_per_second for each channel)
--- [x] plot cycles to screen
--- [] where path between points of cycles[1] overlaps path between points of cycles[2] place note on staff
--- [] where x is some kind of array consisting of rests and notes of some sort of frequency abstracted from the intersection point
--- [] tempo managed by system
--- [] c major scale, quant
--- [] k3 == transport start/pause
--- [] k1+k3 == transport reset
+
+
+include('lib/note')
+include('lib/notes')
 
 EPS_MIN = 10
 EPS_MAX = 1200
@@ -32,7 +24,7 @@ volt_max = 6.5
 staff_lines = octaves * 5
 staff_line_offset = y_pixels / staff_lines
 player_step = 1
-player_run = false
+player_run = true
 
 function init()
   init_cycles()
@@ -53,11 +45,9 @@ function init_cycles()
 end
 
 function init_notes()
-  raw_points_of_intersection = {}
-  
-  for i=1, STAFF_WIDTH do
-    raw_points_of_intersection[i] = nil
-  end
+  player_roll_notes = Notes:new()
+  cycle_window_notes = Notes:new({max_step = STAFF_WIDTH, next_notes = player_roll_notes})
+  print(player_roll_notes.max_step)
 end
 
 function get_time()
@@ -114,12 +104,14 @@ end
 function step_cycle_loop()
   for i=1, STAFF_WIDTH do
     draw_cycle_step(i)
+    cycle_window_notes:take_steps(player_run)
   end
 end
 
 function player_loop()
   counter.time = get_time()
   player_step = (player_step < 64) and player_step + 1 or 1
+  player_roll_notes:take_steps(player_run)
 end
 
 function draw_staff()
@@ -133,10 +125,10 @@ function draw_staff()
   end
 end
 
+-- temp, naive crossing. need line segment intersect
 function create_note_if_crossing(step)
   if cycles[1][step] == cycles[2][step] then
-    screen.level(10)
-    screen.circle(step, calculate_cycle_to_screen_proportions(cycles[1][step]), 3)
+    
   end
 end
 
@@ -156,15 +148,8 @@ function draw_cycle_step(step)
   end
   if points[1] and points[1] == points[2] then
     screen.level(10)
-    screen.circle(step, points[1], 3)
+    cycle_window_notes:add(Note:new({x_pos = step, scaled_y_pos = points[1], raw_volts = cycles[1][step]}))
   end
-end
-
-function draw_player_roll()
-  local x = STAFF_WIDTH + player_step
-  screen.level(1)
-  screen.move(x, staff_line_offset)
-  screen.line(x, y_pixels)
 end
 
 function enc(e, d)
@@ -185,21 +170,29 @@ function key(k, z)
   if k == 2 and z == 0 then
     print('K2')
   elseif k == 3 and z == 0 and player_run == false then
-    run = true
+    player_run = true
     counter:start()
   elseif k == 3 and z == 0 and player_run then
-    run = false
+    player_run = false
     counter:stop()
-    step = 0
+  elseif k == 3 and z == 1 and player_run then
+    player_run = false
+    counter:stop()
+    player_step = 0
   end
+end
+
+function draw_notes()
+  cycle_window_notes:draw_notes()
+  player_roll_notes:draw_notes()
 end
 
 function redraw()
   screen.clear()
   
   draw_staff()
-  draw_player_roll()
   step_cycle_loop()
+  draw_notes()
   
   screen.move(1, 60)
   screen.text(''..events_per_second..' Hz')
