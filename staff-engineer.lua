@@ -5,10 +5,11 @@
 
 include('lib/note')
 include('lib/notes')
+include('lib/find-line-segment-overlap')
 
-EPS_MIN = 10
-EPS_MAX = 1200
-STAFF_WIDTH = 64
+EPS_MIN = 100
+EPS_MAX = 600
+FRAME_WIDTH = 64
 
 events_per_second = 120
 bpm = events_per_second
@@ -29,7 +30,9 @@ player_run = true
 function init()
   init_cycles()
   init_notes()
-  counter = metro.init(player_loop, get_time())
+  player_counter = metro.init(player_loop, get_player_time())
+  generator_counter = metro.init(generator_loop, 1)
+  generator_counter:start()
   crow.input[1].stream = record_cycle_1
   crow.input[2].stream = record_cycle_2
   adjust_sample_frequency(events_per_second)
@@ -46,17 +49,16 @@ end
 
 function init_notes()
   player_roll_notes = Notes:new()
-  cycle_window_notes = Notes:new({max_step = STAFF_WIDTH, next_notes = player_roll_notes})
-  print(player_roll_notes.max_step)
+  cycle_window_notes = Notes:new({max_step = FRAME_WIDTH, next_notes = player_roll_notes})
 end
 
-function get_time()
+function get_player_time()
   return 60 / bpm
 end
 
 function adjust_sample_frequency()
   local time_arg = 1 / events_per_second
-  plot_position_modifier = STAFF_WIDTH / events_per_second
+  plot_position_modifier = FRAME_WIDTH / events_per_second
   crow.input[1].mode('stream', time_arg)
   crow.input[2].mode('stream', time_arg)
 end
@@ -101,15 +103,36 @@ function map_cycle_sample_to_pixel(i)
   return cycle_sample
 end
 
-function step_cycle_loop()
-  for i=1, STAFF_WIDTH do
-    draw_cycle_step(i)
-    cycle_window_notes:take_steps(player_run)
+function place_notes_on_intersections()
+  for i=1, FRAME_WIDTH do
+    local sample = map_cycle_sample_to_pixel(i)
+    local intersection = nil
+
+    if cycles[1][sample] then
+      local ax = map_cycle_sample_to_pixel(i > 1 and i - 1 or FRAME_WIDTH)
+      local bx = map_cycle_sample_to_pixel(i < FRAME_WIDTH and i + 1 or 1)
+
+      intersection = find_line_segment_overlap(ax, cycles[1][ax], bx, cycles[1][bx], ax, cycles[2][ax], bx, cycles[2][bx])
+
+      if intersection then
+        cycle_window_notes:add(Note:new({x_pos = i, scaled_y_pos = calculate_cycle_to_screen_proportions(intersection.y), raw_volts = intersection.y}))
+      end
+    end
   end
 end
 
+function step_cycle_loop()
+  for i=1, FRAME_WIDTH do
+    draw_cycle_step(i)
+  end
+end
+
+function generator_loop()
+  place_notes_on_intersections()
+  cycle_window_notes:take_steps(player_run)
+end
+
 function player_loop()
-  counter.time = get_time()
   player_step = (player_step < 64) and player_step + 1 or 1
   player_roll_notes:take_steps(player_run)
 end
@@ -120,21 +143,13 @@ function draw_staff()
   for i=1, staff_lines do
     screen.level(1)
     local y = i * staff_line_offset
-    screen.move(0, y)
-    screen.line(STAFF_WIDTH, y)
-  end
-end
-
--- temp, naive crossing. need line segment intersect
-function create_note_if_crossing(step)
-  if cycles[1][step] == cycles[2][step] then
-    
+    screen.move(FRAME_WIDTH, y)
+    screen.line(128, y)
   end
 end
 
 function draw_cycle_step(step)
   screen.level(5)
-  local points = {nil,nil}
   local sample = map_cycle_sample_to_pixel(step)
   
   for i=1, #cycles do
@@ -142,13 +157,8 @@ function draw_cycle_step(step)
 
     if cycle[sample] then
       local scaled_sample = calculate_cycle_to_screen_proportions(cycle[sample]) 
-      points[i] = math.floor(scaled_sample)
       screen.pixel(step, scaled_sample)
     end
-  end
-  if points[1] and points[1] == points[2] then
-    screen.level(10)
-    cycle_window_notes:add(Note:new({x_pos = step, scaled_y_pos = points[1], raw_volts = cycles[1][step]}))
   end
 end
 
@@ -171,13 +181,13 @@ function key(k, z)
     print('K2')
   elseif k == 3 and z == 0 and player_run == false then
     player_run = true
-    counter:start()
-  elseif k == 3 and z == 0 and player_run then
+    player_counter:start()
+  elseif k == 3 and z == 0 and player_run == true then
     player_run = false
-    counter:stop()
-  elseif k == 3 and z == 1 and player_run then
+    player_counter:stop()
+  elseif k == 3 and z == 1 and player_run == true then
     player_run = false
-    counter:stop()
+    player_counter:stop()
     player_step = 0
   end
 end
