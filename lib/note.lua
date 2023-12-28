@@ -1,47 +1,47 @@
-local SCREEN_WIDTH = 128
+local ANIMATION_FRAMES_MAX = 5
+-- Note creation will animate (draw a circle growing and shrinking) from 1 to
+-- ANIMATION_FRAMES_MAX frames then count back to 0 in the oscilloscope window
+-- where the animation_frame value describes the size of the circle to be drawn
 
-Notes = {
-  max_step = SCREEN_WIDTH,
-  next_notes = nil, -- optional loop to transfer to when max_step is reached
-  notes = {}
+Note = {
+  x_pos = nil,
+  scaled_y_pos = nil,
+  raw_volts = nil,
+  quantized_volts = nil,
+  animating = true,
+  animation_frame = 1
 }
 
-function Notes:new(options)
+function Note:new(options)
   local instance = options or {}
   setmetatable(instance, self)
   self.__index = self
   return instance
 end
 
-function Notes:add(note)
-  table.insert(self.notes, 1, note)
+function Note:get(k)
+  return self[k]
 end
 
-function Notes:_remove(i)
-  table.remove(self.notes, i)
+function Note:set(k, v)
+  self[k] = v
 end
 
-function Notes:take_steps(next_notes_active)
-  for i, note in ipairs(self.notes) do
-    if note.x_pos < self.max_step then
-      note:take_step()
-    elseif self.next_notes and next_notes_active == true then
-      self.next_notes:add(note)
-      self:_remove(i)
-    else
-      self:_remove(i)
-    end
+function Note:take_step()
+  if self.animating then
+    self:_animate()
+  else
+    self.x_pos = self.x_pos + 1
   end
 end
 
-function Notes:draw_notes()
-  for i, note in ipairs(self.notes) do
-    if note.animating then
-      screen.circle(note.x_pos, note.scaled_y_pos, note.animation_frame)
-    else
-      screen.pixel(note.x_pos, note.scaled_y_pos)
-    end
+function Note:_animate()
+  if self.animating and self.animation_frame < ANIMATION_FRAMES_MAX and self.animation_frame > 0 then
+    self.animation_frame = self.animation_frame + 1
+  elseif self.animating and self.animation_frame == ANIMATION_FRAMES_MAX then
+    self.animating = false
+    self:take_step()
   end
 end
 
-return Notes
+return Note
