@@ -1,4 +1,4 @@
-local ANIMATION_FRAMES_MAX = 5
+local ANIMATION_FRAMES_MAX = 3
 -- Note creation will animate (draw a circle growing and shrinking) from 1 to
 -- ANIMATION_FRAMES_MAX frames then count back to 0 in the oscilloscope window
 -- where the animation_frame value describes the size of the circle to be drawn
@@ -9,6 +9,7 @@ Note = {
   raw_volts = nil,
   quantized_volts = nil,
   animating = true,
+  animation_addend = 1,
   animation_frame = 1
 }
 
@@ -37,8 +38,13 @@ end
 
 function Note:_animate()
   if self.animating and self.animation_frame < ANIMATION_FRAMES_MAX and self.animation_frame > 0 then
-    self.animation_frame = self.animation_frame + 1
+    self.animation_frame = self.animation_frame + self.animation_addend
   elseif self.animating and self.animation_frame == ANIMATION_FRAMES_MAX then
+    self.animation_addend = -1
+    self.animation_frame = self.animation_frame + self.animation_addend
+  elseif self.animating and self.animation_frame == 0 then
+    self.animation_addend = 1
+    self.animation_frame = 1
     self.animating = false
     self:take_step()
   end
