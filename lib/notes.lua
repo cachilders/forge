@@ -17,21 +17,24 @@ function Notes:add(note)
   table.insert(self.notes, 1, note)
 end
 
-function Notes:_remove(i)
-  table.remove(self.notes, i)
+
+function Notes:_replace(t)
+  self.notes = t
 end
 
 function Notes:take_steps(next_notes_active)
+  local refreshed_notes = {}
+
   for i, note in ipairs(self.notes) do
     if note.x_pos < self.max_step then
       note:take_step()
+      table.insert(refreshed_notes, note)
     elseif self.next_notes and next_notes_active == true then
       self.next_notes:add(note)
-      self:_remove(i)
-    else
-      self:_remove(i)
     end
   end
+
+  self:_replace(refreshed_notes)
 end
 
 function Notes:draw_notes()

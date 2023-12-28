@@ -31,7 +31,7 @@ function init()
   init_cycles()
   init_notes()
   player_counter = metro.init(player_loop, get_player_time())
-  generator_counter = metro.init(generator_loop, 1)
+  generator_counter = metro.init(generator_loop, get_player_time()/2)
   generator_counter:start()
   crow.input[1].stream = record_cycle_1
   crow.input[2].stream = record_cycle_2
@@ -128,13 +128,16 @@ function step_cycle_loop()
 end
 
 function generator_loop()
-  place_notes_on_intersections()
+  if player_step % 8 == 0 then
+    place_notes_on_intersections()
+  end
+  
   cycle_window_notes:take_steps(player_run)
 end
 
 function player_loop()
-  player_step = (player_step < 64) and player_step + 1 or 1
-  player_roll_notes:take_steps(player_run)
+  player_step = (player_step < FRAME_WIDTH) and player_step + 1 or 1
+  player_roll_notes:take_steps()
 end
 
 function draw_staff()
