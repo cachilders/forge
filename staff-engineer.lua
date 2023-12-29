@@ -2,17 +2,41 @@
 -- Crow
 -- 16bit [-5V,10V] range
 
+-- TODO
+-- Make player output devices (midi, engine, crow volts, etc)
+-- - Crow is raw volts 1/2 and quant volts 3/4
+-- - Devices added to a play object that sends played notes to them
+-- Make Quantizer object
+-- - Definitely notes
+-- - Maybe beats
+-- Params:
+-- Allow cycle sampler min and max trims to be adjusted
+-- Allow octave count to be adjusted
+-- Scale selection
+-- Root selection
+-- Clock source, mult/div, etc
+-- Midi device, panic, etc
+-- Output device selection (crow is always on)
+-- Crow output settings (bipolar/unipolar, etc)
 
 include('lib/note')
 include('lib/notes')
 include('lib/find-line-segment-overlap')
 
+m_util = require 'musicutil'
+
 EPS_MIN = 100
 EPS_MAX = 600
 FRAME_WIDTH = 64
+QUANT_WIDTH = 16
+SCREEN_WIDTH = 128
+
+engine.name = "PolyPerc"
 
 events_per_second = 120
 bpm = events_per_second
+player_clock_div = 1
+generator_clock_div = 2
 plot_position_modifier = 1
 time_arg = 1 / events_per_second
 event = 1
@@ -25,13 +49,13 @@ volt_max = 6.5
 staff_lines = octaves * 5
 staff_line_offset = y_pixels / staff_lines
 player_step = 1
-player_run = true
+player_run = false
 
 function init()
   init_cycles()
   init_notes()
-  player_counter = metro.init(player_loop, get_player_time())
-  generator_counter = metro.init(generator_loop, get_player_time()/2)
+  player_counter = metro.init(player_loop, get_player_time()/player_clock_div)
+  generator_counter = metro.init(generator_loop, get_player_time()/generator_clock_div)
   generator_counter:start()
   crow.input[1].stream = record_cycle_1
   crow.input[2].stream = record_cycle_2
@@ -48,12 +72,34 @@ function init_cycles()
 end
 
 function init_notes()
-  player_roll_notes = Notes:new()
-  cycle_window_notes = Notes:new({max_step = FRAME_WIDTH, next_notes = player_roll_notes})
+  player_segment_notes = Notes:new({max_step = SCREEN_WIDTH, exit_action = play_note})
+  quantizer_segment_notes = Notes:new({max_step = FRAME_WIDTH + QUANT_WIDTH, connection = player_segment_notes, exit_action = quantize_note})
+  cycle_window_notes = Notes:new({max_step = FRAME_WIDTH, connection = quantizer_segment_notes})
 end
 
 function get_player_time()
   return 60 / bpm
+end
+
+function quantize_note(note)
+  -- Temp
+  print('Quantizing '..note.raw_volts)
+end
+
+function play_note(note)
+  -- Temp. POC
+  local negative_offset = math.abs(volt_min)
+  local volt_range = negative_offset + volt_max
+  local midi_range = octaves * 12
+  local multiplier = midi_range / volt_range
+  local volt_abs = note.raw_volts + negative_offset
+  local midi_note = 12 + math.floor(volt_abs * multiplier) -- arbitrary midi octave offset
+  print('Playing '..midi_note)
+
+  local hz = m_util.note_num_to_freq(midi_note)
+
+  engine.amp(1) 
+  engine.hz(hz)
 end
 
 function adjust_sample_frequency()
@@ -139,7 +185,8 @@ function player_loop()
   player_step = (player_step < FRAME_WIDTH) and player_step + 1 or 1
   
   if player_run then
-    player_roll_notes:take_steps()
+    quantizer_segment_notes:take_steps(player_run)
+    player_segment_notes:take_steps()
   end
 end
 
@@ -185,22 +232,23 @@ function key(k, z)
 
   if k == 2 and z == 0 then
     print('K2')
-  elseif k == 3 and z == 0 and player_run == false then
+  elseif k == 3 and z == 1 and player_run == false then
     player_run = true
     player_counter:start()
-  elseif k == 3 and z == 0 and player_run == true then
+  elseif k == 3 and z == 1 and shift == false and player_run == true then
     player_run = false
     player_counter:stop()
-  elseif k == 3 and z == 1 and player_run == true then
+  elseif k == 3 and z == 1 and shift == true and player_run == true then
     player_run = false
     player_counter:stop()
-    player_step = 0
+    player_step = 1
   end
 end
 
 function draw_notes()
   cycle_window_notes:draw_notes()
-  player_roll_notes:draw_notes()
+  quantizer_segment_notes:draw_notes()
+  player_segment_notes:draw_notes()
 end
 
 function redraw()

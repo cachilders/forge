@@ -1,8 +1,9 @@
 local SCREEN_WIDTH = 128
 
 Notes = {
+  connection = nil,
+  exit_action = function() end,
   max_step = SCREEN_WIDTH,
-  next_notes = nil, -- optional loop to transfer to when max_step is reached
   notes = {}
 }
 
@@ -25,15 +26,19 @@ function Notes:_replace(t)
   self.notes = t
 end
 
-function Notes:take_steps(next_notes_active)
+function Notes:take_steps(connection_active)
   local refreshed_notes = {}
 
   for i, note in ipairs(self.notes) do
     if note.x_pos < self.max_step then
       note:take_step()
       table.insert(refreshed_notes, note)
-    elseif self.next_notes and next_notes_active == true then
-      self.next_notes:add(note)
+    else
+      if self.connection and connection_active == true then
+        self.connection:add(note)
+      end
+
+      self.exit_action(note)
     end
   end
 
