@@ -14,9 +14,12 @@ function Notes:new(options)
 end
 
 function Notes:add(note)
-  table.insert(self.notes, 1, note)
+  table.insert(self.notes, note)
 end
 
+function Notes:_remove(i)
+  table.remove(self.notes, i)
+end
 
 function Notes:_replace(t)
   self.notes = t

@@ -137,7 +137,10 @@ end
 
 function player_loop()
   player_step = (player_step < FRAME_WIDTH) and player_step + 1 or 1
-  player_roll_notes:take_steps()
+  
+  if player_run then
+    player_roll_notes:take_steps()
+  end
 end
 
 function draw_staff()
