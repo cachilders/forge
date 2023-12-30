@@ -22,5 +22,3 @@ function find_line_segment_overlap (ax, ay, bx, by, cx, cy, dx, dy) -- start end
 
     return nil
 end
-
-return find_line_segment_overlap

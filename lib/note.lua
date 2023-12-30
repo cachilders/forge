@@ -8,6 +8,8 @@ Note = {
   scaled_y_pos = nil,
   raw_volts = nil,
   quantized_volts = nil,
+  raw_note_number = nil,
+  quantized_note_number = nil,
   animating = true,
   animation_addend = 1,
   animation_frame = 1
@@ -28,11 +30,11 @@ function Note:set(k, v)
   self[k] = v
 end
 
-function Note:take_step()
+function Note:take_step(step_by)
   if self.animating then
     self:_animate()
   else
-    self.x_pos = self.x_pos + 1
+    self.x_pos = self.x_pos + (step_by or 1)
   end
 end
 
@@ -49,5 +51,3 @@ function Note:_animate()
     self:take_step()
   end
 end
-
-return Note

@@ -4,6 +4,7 @@ Notes = {
   connection = nil,
   exit_action = function() end,
   max_step = SCREEN_WIDTH,
+  step_by = 1,
   notes = {}
 }
 
@@ -18,10 +19,6 @@ function Notes:add(note)
   table.insert(self.notes, note)
 end
 
-function Notes:_remove(i)
-  table.remove(self.notes, i)
-end
-
 function Notes:_replace(t)
   self.notes = t
 end
@@ -30,8 +27,8 @@ function Notes:take_steps(connection_active)
   local refreshed_notes = {}
 
   for i, note in ipairs(self.notes) do
-    if note.x_pos < self.max_step then
-      note:take_step()
+    if note:get('x_pos') < self.max_step then
+      note:take_step(self.step_by)
       table.insert(refreshed_notes, note)
     else
       if self.connection and connection_active == true then
@@ -47,12 +44,10 @@ end
 
 function Notes:draw_notes()
   for i, note in ipairs(self.notes) do
-    if note.animating then
-      screen.circle(note.x_pos, note.scaled_y_pos, note.animation_frame)
+    if note:get('animating') then
+      screen.circle(note:get('x_pos'), note:get('scaled_y_pos'), note:get('animation_frame'))
     else
-      screen.pixel(note.x_pos, note.scaled_y_pos)
+      screen.pixel(note:get('x_pos'), note:get('scaled_y_pos'))
     end
   end
 end
-
-return Notes

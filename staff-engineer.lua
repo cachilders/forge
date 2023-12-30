@@ -3,12 +3,12 @@
 -- 16bit [-5V,10V] range
 
 -- TODO
--- Make player output devices (midi, engine, crow volts, etc)
+-- Fix data orientation (graph) bug
+-- Fix transport bug
+-- Fix drawing bug (lines between objects) if possible
+-- Make additional player output devices (midi, crow volts, etc)
 -- - Crow is raw volts 1/2 and quant volts 3/4
 -- - Devices added to a play object that sends played notes to them
--- Make Quantizer object
--- - Definitely notes
--- - Maybe beats
 -- Params:
 -- Allow cycle sampler min and max trims to be adjusted
 -- Allow octave count to be adjusted
@@ -19,9 +19,13 @@
 -- Output device selection (crow is always on)
 -- Crow output settings (bipolar/unipolar, etc)
 
+include('lib/engine-output')
+include('lib/find-line-segment-overlap')
 include('lib/note')
 include('lib/notes')
-include('lib/find-line-segment-overlap')
+include('lib/output')
+include('lib/outputs')
+include('lib/quantizer')
 
 m_util = require 'musicutil'
 
@@ -30,8 +34,6 @@ EPS_MAX = 600
 FRAME_WIDTH = 64
 QUANT_WIDTH = 16
 SCREEN_WIDTH = 128
-
-engine.name = "PolyPerc"
 
 events_per_second = 120
 bpm = events_per_second
@@ -54,8 +56,11 @@ player_run = false
 function init()
   init_cycles()
   init_notes()
+  init_outputs()
   player_counter = metro.init(player_loop, get_player_time()/player_clock_div)
   generator_counter = metro.init(generator_loop, get_player_time()/generator_clock_div)
+  quantizer = Quantizer:new()
+  quantizer:generate_scale(octaves)
   generator_counter:start()
   crow.input[1].stream = record_cycle_1
   crow.input[2].stream = record_cycle_2
@@ -72,34 +77,30 @@ function init_cycles()
 end
 
 function init_notes()
-  player_segment_notes = Notes:new({max_step = SCREEN_WIDTH, exit_action = play_note})
-  quantizer_segment_notes = Notes:new({max_step = FRAME_WIDTH + QUANT_WIDTH, connection = player_segment_notes, exit_action = quantize_note})
+  player_segment_notes = Notes:new({max_step = SCREEN_WIDTH, exit_action = play_note, step_by = 4})
+  quantizer_segment_notes = Notes:new({max_step = FRAME_WIDTH + QUANT_WIDTH, connection = player_segment_notes, exit_action = quantize_note, step_by = 2})
   cycle_window_notes = Notes:new({max_step = FRAME_WIDTH, connection = quantizer_segment_notes})
 end
+
+function init_outputs()
+  outputs = Outputs:new()
+  log_output = Output:new()
+  engine_output = EngineOutput:new()
+  outputs:add(log_output)
+  outputs:add(engine_output)
+end
+
 
 function get_player_time()
   return 60 / bpm
 end
 
 function quantize_note(note)
-  -- Temp
-  print('Quantizing '..note.raw_volts)
+  quantizer:snap_note(note)
 end
 
 function play_note(note)
-  -- Temp. POC
-  local negative_offset = math.abs(volt_min)
-  local volt_range = negative_offset + volt_max
-  local midi_range = octaves * 12
-  local multiplier = midi_range / volt_range
-  local volt_abs = note.raw_volts + negative_offset
-  local midi_note = 12 + math.floor(volt_abs * multiplier) -- arbitrary midi octave offset
-  print('Playing '..midi_note)
-
-  local hz = m_util.note_num_to_freq(midi_note)
-
-  engine.amp(1) 
-  engine.hz(hz)
+  outputs:play_note(note)
 end
 
 function adjust_sample_frequency()
@@ -149,6 +150,18 @@ function map_cycle_sample_to_pixel(i)
   return cycle_sample
 end
 
+function convert_raw_voltage_to_note_number(v)
+  -- temp
+  local negative_offset = math.abs(volt_min)
+  local volt_range = negative_offset + volt_max
+  local midi_range = octaves * 12
+  local multiplier = midi_range / volt_range
+  local volt_abs = v + negative_offset
+  local midi_floor = quantizer:get('root') - math.floor(midi_range / 2)
+  local raw_note_number = midi_floor + math.floor(volt_abs * multiplier)
+  return raw_note_number
+end
+
 function place_notes_on_intersections()
   for i=1, FRAME_WIDTH do
     local sample = map_cycle_sample_to_pixel(i)
@@ -161,7 +174,7 @@ function place_notes_on_intersections()
       intersection = find_line_segment_overlap(ax, cycles[1][ax], bx, cycles[1][bx], ax, cycles[2][ax], bx, cycles[2][bx])
 
       if intersection then
-        cycle_window_notes:add(Note:new({x_pos = i, scaled_y_pos = calculate_cycle_to_screen_proportions(intersection.y), raw_volts = intersection.y}))
+        cycle_window_notes:add(Note:new({x_pos = i, scaled_y_pos = calculate_cycle_to_screen_proportions(intersection.y), raw_volts = intersection.y, raw_note_number = convert_raw_voltage_to_note_number(intersection.y)}))
       end
     end
   end
@@ -232,13 +245,13 @@ function key(k, z)
 
   if k == 2 and z == 0 then
     print('K2')
-  elseif k == 3 and z == 1 and player_run == false then
+  elseif k == 3 and z == 0 and player_run == false then
     player_run = true
     player_counter:start()
-  elseif k == 3 and z == 1 and shift == false and player_run == true then
+  elseif k == 3 and z == 0 and player_run == true and shift == false  then
     player_run = false
     player_counter:stop()
-  elseif k == 3 and z == 1 and shift == true and player_run == true then
+  elseif k == 3 and z == 0 and player_run == true and shift == true  then
     player_run = false
     player_counter:stop()
     player_step = 1
