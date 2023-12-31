@@ -191,7 +191,7 @@ function key(k, z)
   elseif k == 3 and z == 0 and player_run == false then
     player_run = true
     player_counter:start()
-  elseif k == 3 and z == 0 and player_run == true and shift == false  then
+  elseif k == 3 and z == 0 and player_run == true and shift ~= true  then
     player_run = false
     player_counter:stop()
   elseif k == 3 and z == 0 and player_run == true and shift == true  then
