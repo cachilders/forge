@@ -26,12 +26,12 @@ function Quantizer:set(k, v)
 end
 
 function Quantizer:generate_scale(octaves)
-  self.scale = m_util.generate_scale(self.root, self.scale_type, octaves)
+  self.scale = musicutil.generate_scale(self.root, self.scale_type, octaves)
 end
 
 function Quantizer:snap_note(note)
   if self.note_snap then
-    local quantized_note_number = m_util.snap_note_to_array(note:get('raw_note_number'), self.scale)
+    local quantized_note_number = musicutil.snap_note_to_array(note:get('initial_note_number'), self.scale)
     note:set('quantized_note_number', quantized_note_number)
   end
   

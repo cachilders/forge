@@ -6,6 +6,7 @@
 -- Fix data orientation (graph) bug
 -- Fix transport bug
 -- Fix drawing bug (lines between objects) if possible
+-- "No Crow Connected" state
 -- Make additional player output devices (midi, crow volts, etc)
 -- - Crow is raw volts 1/2 and quant volts 3/4
 -- - Devices added to a play object that sends played notes to them
@@ -21,63 +22,73 @@
 
 include('lib/engine-output')
 include('lib/find-line-segment-overlap')
+include('lib/input')
+include('lib/inputs')
 include('lib/note')
 include('lib/notes')
 include('lib/output')
 include('lib/outputs')
+include('lib/oscilloscope')
 include('lib/quantizer')
+include('lib/utils')
 
-m_util = require 'musicutil'
+musicutil = require 'musicutil'
 
 EPS_MIN = 100
 EPS_MAX = 600
+FRAME_HEIGHT = 50
 FRAME_WIDTH = 64
 QUANT_WIDTH = 16
 SCREEN_WIDTH = 128
+HEIGHT_OFFSET = 5
 
 events_per_second = 120
 bpm = events_per_second
 player_clock_div = 1
 generator_clock_div = 2
-plot_position_modifier = 1
 time_arg = 1 / events_per_second
 event = 1
-cycle_1_dirty = false
-cycle_2_dirty = false
-octaves = 2
-y_pixels = 50
+octaves = 3
 volt_min = -3 
 volt_max = 6.5
-staff_lines = octaves * 5
-staff_line_offset = y_pixels / staff_lines
 player_step = 1
 player_run = false
 
 function init()
-  init_cycles()
+  init_counters()
+  init_inputs()
   init_notes()
+  init_oscilloscope()
   init_outputs()
-  player_counter = metro.init(player_loop, get_player_time()/player_clock_div)
-  generator_counter = metro.init(generator_loop, get_player_time()/generator_clock_div)
-  quantizer = Quantizer:new()
-  quantizer:generate_scale(octaves)
-  generator_counter:start()
-  crow.input[1].stream = record_cycle_1
-  crow.input[2].stream = record_cycle_2
+  init_quantizer()
   adjust_sample_frequency(events_per_second)
 end
 
-function init_cycles()
-  cycles = {{}, {}}
-  
-  for i=1, events_per_second do
-    cycles[1][i] = nil
-    cycles[2][i] = nil
-  end
+function init_counters()
+  player_counter = metro.init(player_loop, get_player_time()/player_clock_div)
+  generator_counter = metro.init(generator_loop, get_player_time()/generator_clock_div)
+  oscilloscope_counter = metro.init(record_inputs_to_oscilloscope, 1/events_per_second)
+  generator_counter:start()
+  oscilloscope_counter:start()
+end
+
+function init_inputs()
+  inputs = Inputs:new()
+  crow_input_1 = Input:new({ source = crow.input[1] })
+  crow_input_2 = Input:new({ source = crow.input[2] })
+  crow_input_1:init()
+  crow_input_2:init()
+  inputs:add(crow_input_1)
+  inputs:add(crow_input_2)
+end
+
+function init_oscilloscope()
+  oscilloscope = Oscilloscope:new({hz = events_per_second, frame_height = FRAME_HEIGHT, frame_width = FRAME_WIDTH, volt_min = volt_min, volt_max = volt_max})
+  oscilloscope:init()
 end
 
 function init_notes()
-  player_segment_notes = Notes:new({max_step = SCREEN_WIDTH, exit_action = play_note, step_by = 4})
+  player_segment_notes = Notes:new({max_step = SCREEN_WIDTH - 1, exit_action = play_note, step_by = 4})
   quantizer_segment_notes = Notes:new({max_step = FRAME_WIDTH + QUANT_WIDTH, connection = player_segment_notes, exit_action = quantize_note, step_by = 2})
   cycle_window_notes = Notes:new({max_step = FRAME_WIDTH, connection = quantizer_segment_notes})
 end
@@ -90,9 +101,17 @@ function init_outputs()
   outputs:add(engine_output)
 end
 
+function init_quantizer()
+  quantizer = Quantizer:new()
+  quantizer:generate_scale(octaves)
+end
 
 function get_player_time()
   return 60 / bpm
+end
+
+function record_inputs_to_oscilloscope()
+  oscilloscope:record_inputs(inputs)
 end
 
 function quantize_note(note)
@@ -105,49 +124,9 @@ end
 
 function adjust_sample_frequency()
   local time_arg = 1 / events_per_second
-  plot_position_modifier = FRAME_WIDTH / events_per_second
-  crow.input[1].mode('stream', time_arg)
-  crow.input[2].mode('stream', time_arg)
-end
-
-function record_cycle(i, v)
-  if cycle_1_dirty and cycle_2_dirty then
-    event = event < events_per_second and event + 1 or 1
-    cycle_1_dirty = false
-    cycle_2_dirty = false
-  end
-  
-  cycles[i][event] = v
-  dirty = true
-end
-
-function record_cycle_1(v)
-  record_cycle(1, v)
-  cycle_1_dirty = true
-end
-
-function record_cycle_2(v)
-  record_cycle(2, v)
-  cycle_2_dirty = true
-end
-
-function calculate_cycle_to_screen_proportions(v)
-  -- y values are inverted to paint to to bottom
-  local inverted_v = v * -1
-  local scaled_volts = (inverted_v - (volt_min * -1))/((volt_max * -1) - (volt_min * -1))*(y_pixels - staff_line_offset) + staff_line_offset
-  return scaled_volts
-end
-
-function map_cycle_sample_to_pixel(i)
-  local cycle_sample = math.floor(i/plot_position_modifier)
-
-  if cycle_sample < 1 then
-    cycle_sample = 1
-  elseif cycle_sample > events_per_second then
-    cycle_sample = events_per_second
-  end
-  
-  return cycle_sample
+  oscilloscope:set('hz', events_per_second)
+  crow_input_1:get('source').mode('stream', time_arg)
+  crow_input_2:get('source').mode('stream', time_arg)
 end
 
 function convert_raw_voltage_to_note_number(v)
@@ -157,38 +136,18 @@ function convert_raw_voltage_to_note_number(v)
   local midi_range = octaves * 12
   local multiplier = midi_range / volt_range
   local volt_abs = v + negative_offset
-  local midi_floor = quantizer:get('root') - math.floor(midi_range / 2)
-  local raw_note_number = midi_floor + math.floor(volt_abs * multiplier)
-  return raw_note_number
+  local midi_floor = quantizer:get('root')
+  local initial_note_number = midi_floor + math.floor(volt_abs * multiplier)
+  return initial_note_number
 end
 
-function place_notes_on_intersections()
-  for i=1, FRAME_WIDTH do
-    local sample = map_cycle_sample_to_pixel(i)
-    local intersection = nil
-
-    if cycles[1][sample] then
-      local ax = map_cycle_sample_to_pixel(i > 1 and i - 1 or FRAME_WIDTH)
-      local bx = map_cycle_sample_to_pixel(i < FRAME_WIDTH and i + 1 or 1)
-
-      intersection = find_line_segment_overlap(ax, cycles[1][ax], bx, cycles[1][bx], ax, cycles[2][ax], bx, cycles[2][bx])
-
-      if intersection then
-        cycle_window_notes:add(Note:new({x_pos = i, scaled_y_pos = calculate_cycle_to_screen_proportions(intersection.y), raw_volts = intersection.y, raw_note_number = convert_raw_voltage_to_note_number(intersection.y)}))
-      end
-    end
-  end
-end
-
-function step_cycle_loop()
-  for i=1, FRAME_WIDTH do
-    draw_cycle_step(i)
-  end
+function place_note_on_intersection(x, y)
+  cycle_window_notes:add(Note:new({x_pos = x, scaled_y_pos = oscilloscope:calculate_cycle_to_screen_proportions(y), raw_volts = y, initial_note_number = convert_raw_voltage_to_note_number(y)}))
 end
 
 function generator_loop()
-  if player_step % 8 == 0 then
-    place_notes_on_intersections()
+  if player_step % 6 == 0 then -- TODO This gate should be variable
+    oscilloscope:act_on_intersections(place_note_on_intersection)
   end
   
   cycle_window_notes:take_steps(player_run)
@@ -203,29 +162,32 @@ function player_loop()
   end
 end
 
-function draw_staff()
+function draw_generator_barrier()
   screen.level(1)
-  
-  for i=1, staff_lines do
-    screen.level(1)
-    local y = i * staff_line_offset
-    screen.move(FRAME_WIDTH, y)
-    screen.line(128, y)
-  end
+  screen.move(FRAME_WIDTH + 1, HEIGHT_OFFSET)
+  screen.line_rel(0, FRAME_HEIGHT - HEIGHT_OFFSET)
 end
 
-function draw_cycle_step(step)
-  screen.level(5)
-  local sample = map_cycle_sample_to_pixel(step)
-  
-  for i=1, #cycles do
-    local cycle = cycles[i]
+function draw_quant_barrier()
+  screen.level(1)
+  screen.move(FRAME_WIDTH + QUANT_WIDTH - 1, HEIGHT_OFFSET)
+  screen.line_rel(0, FRAME_HEIGHT - HEIGHT_OFFSET)
+  screen.move(FRAME_WIDTH + QUANT_WIDTH + 1, HEIGHT_OFFSET)
+  screen.line_rel(0, FRAME_HEIGHT - HEIGHT_OFFSET)
+end
 
-    if cycle[sample] then
-      local scaled_sample = calculate_cycle_to_screen_proportions(cycle[sample]) 
-      screen.pixel(step, scaled_sample)
-    end
-  end
+function draw_play_barrier()
+  screen.level(1)
+  screen.move(SCREEN_WIDTH, HEIGHT_OFFSET)
+  screen.line_rel(0, FRAME_HEIGHT - HEIGHT_OFFSET)
+end
+
+function draw_y_boundaries()
+  screen.level(1)
+  screen.move(0, HEIGHT_OFFSET)
+  screen.line_rel(SCREEN_WIDTH, 0)
+  screen.move(0, FRAME_HEIGHT)
+  screen.line_rel(SCREEN_WIDTH, 0)
 end
 
 function enc(e, d)
@@ -258,29 +220,30 @@ function key(k, z)
   end
 end
 
-function draw_notes()
+function draw_stuff()
   cycle_window_notes:draw_notes()
   quantizer_segment_notes:draw_notes()
   player_segment_notes:draw_notes()
+  oscilloscope:draw_cycles()
+  draw_generator_barrier()
+  draw_quant_barrier()
+  draw_play_barrier()
+  draw_y_boundaries()
 end
 
 function redraw()
   screen.clear()
   
-  draw_staff()
-  step_cycle_loop()
-  draw_notes()
+  draw_stuff()
   
   screen.move(1, 60)
   screen.text(''..events_per_second..' Hz')
   
   screen.stroke()
   screen.update()
-  dirty = false
+
 end
 
 function refresh()
-  if dirty then
     redraw()
-  end
 end
