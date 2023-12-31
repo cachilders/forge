@@ -2,24 +2,6 @@
 -- Crow
 -- 16bit [-5V,10V] range
 
--- TODO
--- Fix data orientation (graph) bug
--- Fix transport bug
--- Fix drawing bug (lines between objects) if possible
--- "No Crow Connected" state
--- Make additional player output devices (midi, crow volts, etc)
--- - Crow is raw volts 1/2 and quant volts 3/4
--- - Devices added to a play object that sends played notes to them
--- Params:
--- Allow cycle sampler min and max trims to be adjusted
--- Allow octave count to be adjusted
--- Scale selection
--- Root selection
--- Clock source, mult/div, etc
--- Midi device, panic, etc
--- Output device selection (crow is always on)
--- Crow output settings (bipolar/unipolar, etc)
-
 include('lib/engine-output')
 include('lib/find-line-segment-overlap')
 include('lib/input')
@@ -43,7 +25,6 @@ SCREEN_WIDTH = 128
 HEIGHT_OFFSET = 5
 
 events_per_second = 120
-bpm = events_per_second
 player_clock_div = 1
 generator_clock_div = 2
 time_arg = 1 / events_per_second
@@ -67,7 +48,7 @@ end
 function init_counters()
   player_counter = metro.init(player_loop, get_player_time()/player_clock_div)
   generator_counter = metro.init(generator_loop, get_player_time()/generator_clock_div)
-  oscilloscope_counter = metro.init(record_inputs_to_oscilloscope, 1/events_per_second)
+  oscilloscope_counter = metro.init(record_inputs_to_oscilloscope, time_arg)
   generator_counter:start()
   oscilloscope_counter:start()
 end
@@ -82,15 +63,15 @@ function init_inputs()
   inputs:add(crow_input_2)
 end
 
-function init_oscilloscope()
-  oscilloscope = Oscilloscope:new({hz = events_per_second, frame_height = FRAME_HEIGHT, frame_width = FRAME_WIDTH, volt_min = volt_min, volt_max = volt_max})
-  oscilloscope:init()
-end
-
 function init_notes()
   player_segment_notes = Notes:new({max_step = SCREEN_WIDTH - 1, exit_action = play_note, step_by = 4})
   quantizer_segment_notes = Notes:new({max_step = FRAME_WIDTH + QUANT_WIDTH, connection = player_segment_notes, exit_action = quantize_note, step_by = 2})
   cycle_window_notes = Notes:new({max_step = FRAME_WIDTH, connection = quantizer_segment_notes})
+end
+
+function init_oscilloscope()
+  oscilloscope = Oscilloscope:new({hz = events_per_second, frame_height = FRAME_HEIGHT, height_offset = HEIGHT_OFFSET, frame_width = FRAME_WIDTH, volt_min = volt_min, volt_max = volt_max})
+  oscilloscope:init()
 end
 
 function init_outputs()
@@ -107,7 +88,7 @@ function init_quantizer()
 end
 
 function get_player_time()
-  return 60 / bpm
+  return 60 / params:get('clock_tempo')
 end
 
 function record_inputs_to_oscilloscope()
@@ -237,7 +218,9 @@ function redraw()
   draw_stuff()
   
   screen.move(1, 60)
-  screen.text(''..events_per_second..' Hz')
+  screen.text(''..oscilloscope:get('hz')..' Hz')
+  screen.move(FRAME_WIDTH + QUANT_WIDTH, 60)
+  screen.text(''..params:get('clock_tempo')..' BPM')
   
   screen.stroke()
   screen.update()
