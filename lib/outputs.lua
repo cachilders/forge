@@ -14,7 +14,7 @@ function Outputs:add(output)
 end
 
 function Outputs:play_note(note)
-  for i=1, #self.outputs do
+  for i = 1, #self.outputs do
     local output = self.outputs[i]
     output:play_note(note)
   end
