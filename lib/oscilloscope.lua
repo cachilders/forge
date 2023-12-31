@@ -83,9 +83,8 @@ function Oscilloscope:act_on_intersections(callback)
 end
 
 function Oscilloscope:calculate_cycle_to_screen_proportions(v)
-  -- y values are inverted to paint to to bottom
-  local inverted_v = v * -1
-  return (inverted_v - (self.volt_min * -1))/((self.volt_max * -1) - (self.volt_min * -1))*(self.frame_height - self.height_offset) + self.height_offset
+  local range = (self.volt_max + (self.volt_min * -1))
+  return ((self.frame_height - self.height_offset) * ((range - (v + (self.volt_min * -1)))/range)) + (self.height_offset - 1)
 end
 
 function Oscilloscope:_draw_cycle_step(step)
