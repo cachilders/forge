@@ -1,4 +1,7 @@
 TODO
+- Notes are pooling behind the quantizer queue when transport is paused
+- - This is one bug just because they should die if next notes is false
+- - But another because the generator should always be on regardless of play state or match the play state. it's starting off but not shutting off after being started
 - Fix drawing bug (lines between objects) if possible (low priority honestly because it looks good)
 - Add "No Crow Connected" state
 - Make additional player output devices (midi, crow volts, etc)
