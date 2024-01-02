@@ -2,10 +2,11 @@
 -- you know, for Crow
 -- 16bit [-5V,10V] range
 
+include('lib/crow-input')
 include('lib/engine-output')
 include('lib/find-line-segment-overlap')
-include('lib/input')
 include('lib/inputs')
+include('lib/lfo-input')
 include('lib/note')
 include('lib/notes')
 include('lib/output')
@@ -14,13 +15,14 @@ include('lib/oscilloscope')
 include('lib/quantizer')
 include('lib/utils')
 
-musicutil = require 'musicutil'
+LFO = require('lfo')
+musicutil = require('musicutil')
 
 EPS_MIN = 100
 EPS_MAX = 600
 FRAME_HEIGHT = 50
 FRAME_WIDTH = 64
-QUANT_WIDTH = 16
+QUANT_WIDTH = 24
 SCREEN_WIDTH = 128
 HEIGHT_OFFSET = 5
 
@@ -36,10 +38,10 @@ player_step = 1
 player_run = false
 
 function init()
+  init_oscilloscope()
   init_counters()
   init_inputs()
   init_notes()
-  init_oscilloscope()
   init_outputs()
   init_quantizer()
   adjust_sample_frequency(events_per_second)
@@ -55,12 +57,18 @@ end
 
 function init_inputs()
   inputs = Inputs:new()
-  crow_input_1 = Input:new({ source = crow.input[1] })
-  crow_input_2 = Input:new({ source = crow.input[2] })
-  crow_input_1:init()
-  crow_input_2:init()
-  inputs:add(crow_input_1)
-  inputs:add(crow_input_2)
+  -- crow_input_1 = CrowInput:new({ source = crow.input[1] })
+  -- crow_input_2 = CrowInput:new({ source = crow.input[2] })
+  -- crow_input_1:init()
+  -- crow_input_2:init()
+  -- inputs:add(crow_input_1)
+  -- inputs:add(crow_input_2)
+  lfo_input_1 = LFOInput:new({ shape = 'sine', min = oscilloscope:get('volt_min'), max = oscilloscope:get('volt_max'), depth = .75 })
+  lfo_input_2 = LFOInput:new({ shape = 'tri', min = oscilloscope:get('volt_min'), max = oscilloscope:get('volt_max'), depth = .5, period = 1.7 })
+  lfo_input_1:init()
+  lfo_input_2:init()
+  inputs:add(lfo_input_1)
+  inputs:add(lfo_input_2)
 end
 
 function init_notes()
@@ -106,8 +114,10 @@ end
 function adjust_sample_frequency()
   local time_arg = 1 / events_per_second
   oscilloscope:set('hz', events_per_second)
-  crow_input_1:get('source').mode('stream', time_arg)
-  crow_input_2:get('source').mode('stream', time_arg)
+  if crow_input_1 and crow_input_2 then
+    crow_input_1:get('source').mode('stream', time_arg)
+    crow_input_2:get('source').mode('stream', time_arg)
+  end
 end
 
 function convert_raw_voltage_to_note_number(v)
@@ -157,17 +167,19 @@ function draw_quant_barrier()
   screen.line_rel(0, FRAME_HEIGHT - HEIGHT_OFFSET)
 end
 
-function draw_play_barrier()
+function draw_x_boundaries()
   screen.level(1)
+  screen.move(1, HEIGHT_OFFSET)
+  screen.line_rel(0, FRAME_HEIGHT - HEIGHT_OFFSET)
   screen.move(SCREEN_WIDTH, HEIGHT_OFFSET)
   screen.line_rel(0, FRAME_HEIGHT - HEIGHT_OFFSET)
 end
 
 function draw_y_boundaries()
   screen.level(1)
-  screen.move(0, HEIGHT_OFFSET)
+  screen.move(1, HEIGHT_OFFSET)
   screen.line_rel(SCREEN_WIDTH, 0)
-  screen.move(0, FRAME_HEIGHT)
+  screen.move(1, FRAME_HEIGHT)
   screen.line_rel(SCREEN_WIDTH, 0)
 end
 
@@ -208,7 +220,7 @@ function draw_stuff()
   oscilloscope:draw_cycles()
   draw_generator_barrier()
   draw_quant_barrier()
-  draw_play_barrier()
+  draw_x_boundaries()
   draw_y_boundaries()
 end
 
@@ -224,7 +236,6 @@ function redraw()
   
   screen.stroke()
   screen.update()
-
 end
 
 function refresh()

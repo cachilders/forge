@@ -11,12 +11,6 @@ function Input:new(options)
   return instance
 end
 
-function Input:init()
-  if self.source then
-    self.source.stream = function(v) self:update(v) end
-  end
-end
-
 function Input:get(k)
   return self[k]
 end
