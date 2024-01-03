@@ -1,5 +1,6 @@
 Input = {
   dirty = false,
+  name = '',
   source = nil,
   value = nil
 }

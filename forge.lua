@@ -12,6 +12,7 @@ include('lib/notes')
 include('lib/output')
 include('lib/outputs')
 include('lib/oscilloscope')
+include('lib/params')
 include('lib/quantizer')
 include('lib/utils')
 
@@ -38,6 +39,7 @@ player_step = 1
 player_run = false
 
 function init()
+  init_params()
   init_oscilloscope()
   init_counters()
   init_inputs()
@@ -63,8 +65,8 @@ function init_inputs()
   -- crow_input_2:init()
   -- inputs:add(crow_input_1)
   -- inputs:add(crow_input_2)
-  lfo_input_1 = LFOInput:new({ shape = 'sine', min = oscilloscope:get('volt_min'), max = oscilloscope:get('volt_max'), depth = .75 })
-  lfo_input_2 = LFOInput:new({ shape = 'tri', min = oscilloscope:get('volt_min'), max = oscilloscope:get('volt_max'), depth = .5, period = 1.7 })
+  lfo_input_1 = LFOInput:new({ name = 'LFO Input 1', id = 'lfo_input_1', min = oscilloscope:get('volt_min'), max = oscilloscope:get('volt_max'), depth = .75 })
+  lfo_input_2 = LFOInput:new({ name = 'LFO Input 2', id = 'lfo_input_2', min = oscilloscope:get('volt_min'), max = oscilloscope:get('volt_max'), depth = .5, period = .5, phase = .5 })
   lfo_input_1:init()
   lfo_input_2:init()
   inputs:add(lfo_input_1)
@@ -154,13 +156,11 @@ function player_loop()
 end
 
 function draw_generator_barrier()
-  screen.level(1)
   screen.move(FRAME_WIDTH + 1, HEIGHT_OFFSET)
   screen.line_rel(0, FRAME_HEIGHT - HEIGHT_OFFSET)
 end
 
 function draw_quant_barrier()
-  screen.level(1)
   screen.move(FRAME_WIDTH + QUANT_WIDTH - 1, HEIGHT_OFFSET)
   screen.line_rel(0, FRAME_HEIGHT - HEIGHT_OFFSET)
   screen.move(FRAME_WIDTH + QUANT_WIDTH + 1, HEIGHT_OFFSET)
@@ -168,7 +168,6 @@ function draw_quant_barrier()
 end
 
 function draw_x_boundaries()
-  screen.level(1)
   screen.move(1, HEIGHT_OFFSET)
   screen.line_rel(0, FRAME_HEIGHT - HEIGHT_OFFSET)
   screen.move(SCREEN_WIDTH, HEIGHT_OFFSET)
@@ -176,7 +175,6 @@ function draw_x_boundaries()
 end
 
 function draw_y_boundaries()
-  screen.level(1)
   screen.move(1, HEIGHT_OFFSET)
   screen.line_rel(SCREEN_WIDTH, 0)
   screen.move(1, FRAME_HEIGHT)

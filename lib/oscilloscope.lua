@@ -88,7 +88,6 @@ function Oscilloscope:calculate_cycle_to_screen_proportions(v)
 end
 
 function Oscilloscope:_draw_cycle_step(step)
-  screen.level(5)
   local sample = self:_map_cycle_sample_to_pixel(step)
 
   for i = 1, #self.cycles do
