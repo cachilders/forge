@@ -12,7 +12,8 @@ LFOInput = {
   ppqn = 96,
   offset = 0,
   reset_target = 'center',
-  shape = 'sine'
+  shape = 'sine',
+  type = 'lfo'
 }
 
 setmetatable(LFOInput, { __index = Input })

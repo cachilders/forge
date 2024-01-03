@@ -21,9 +21,9 @@ function init_params()
   params:add_separator('inputs_space', '')
   params:add_separator('inputs', 'Inputs')
 
-  params:add_option('input_1', 'Input 1 Source', parameters.input_sources, 1)
+  params:add_option('input_1', 'Input 1 Source', parameters.input_sources, 2)
   params:set_action('input_1', function(i) parameters.inputs[1] = parameters.input_sources[i] end)
-  params:add_option('input_2', 'Input 2 Source', parameters.input_sources, 1)
+  params:add_option('input_2', 'Input 2 Source', parameters.input_sources, 2)
   params:set_action('input_2', function(i) parameters.inputs[2] = parameters.input_sources[i] end)
 
   params:add_separator('oscilloscope_space', '')

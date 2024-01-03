@@ -59,18 +59,24 @@ end
 
 function init_inputs()
   inputs = Inputs:new()
-  -- crow_input_1 = CrowInput:new({ source = crow.input[1] })
-  -- crow_input_2 = CrowInput:new({ source = crow.input[2] })
-  -- crow_input_1:init()
-  -- crow_input_2:init()
-  -- inputs:add(crow_input_1)
-  -- inputs:add(crow_input_2)
-  lfo_input_1 = LFOInput:new({ name = 'LFO Input 1', id = 'lfo_input_1', min = oscilloscope:get('volt_min'), max = oscilloscope:get('volt_max'), depth = .75 })
-  lfo_input_2 = LFOInput:new({ name = 'LFO Input 2', id = 'lfo_input_2', min = oscilloscope:get('volt_min'), max = oscilloscope:get('volt_max'), depth = .5, period = .5, phase = .5 })
-  lfo_input_1:init()
-  lfo_input_2:init()
-  inputs:add(lfo_input_1)
-  inputs:add(lfo_input_2)
+  crow_inputs = {
+    CrowInput:new({ source = crow.input[1] }),
+    CrowInput:new({ source = crow.input[2] })
+  }
+  lfo_inputs = {
+    LFOInput:new({ name = 'LFO Input 1', id = 'lfo_input_1', min = oscilloscope:get('volt_min'), max = oscilloscope:get('volt_max'), depth = .75 }),
+    LFOInput:new({ name = 'LFO Input 2', id = 'lfo_input_2', min = oscilloscope:get('volt_min'), max = oscilloscope:get('volt_max'), depth = .5, period = .5, phase = .5 })
+  }
+
+  for i = 1, #parameters.inputs do
+    if parameters.inputs[i] == parameters.input_sources[1] then
+      inputs:add(crow_inputs[i])
+      crow_inputs[i]:init()
+    elseif parameters.inputs[i] == parameters.input_sources[2] then
+      inputs:add(lfo_inputs[i])
+      lfo_inputs[i]:init()
+    end
+  end
 end
 
 function init_notes()

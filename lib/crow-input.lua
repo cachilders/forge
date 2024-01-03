@@ -1,6 +1,8 @@
 include('lib/input')
 
-CrowInput = {}
+CrowInput = {
+  type = 'crow'
+}
 
 setmetatable(CrowInput, { __index = Input })
 
