@@ -1,9 +1,7 @@
--- root_num integer MIDI note number (0-127) defining the key.
--- scale_type string String defining scale type. Not all scales are supported; valid values are "Major" (or "Ionian"), "Natural Minor" (or "Minor" or "Aeolian"), "Harmonic Minor", "Melodic Minor", "Dorian", "Phrygian", "Lydian", "Mixolydian", or "Locrian".
-
 Quantizer = {
   note_snap = true,
-  root = 60,
+  octaves = 3,
+  root = 48,
   scale = {},
   scale_type = 'Major',
   snap_to = 4,
@@ -25,8 +23,8 @@ function Quantizer:set(k, v)
   self[k] = v
 end
 
-function Quantizer:generate_scale(octaves)
-  self.scale = musicutil.generate_scale(self.root, self.scale_type, octaves)
+function Quantizer:generate_scale()
+  self.scale = musicutil.generate_scale(self.root, self.scale_type, self.octaves)
 end
 
 function Quantizer:snap_note(note)

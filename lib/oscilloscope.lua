@@ -1,5 +1,4 @@
-include('lib/find-line-segment-overlap')
-include('lib/utils')
+-- include('lib/utils')
 
 Oscilloscope = {
   current_event = 1,
@@ -8,8 +7,6 @@ Oscilloscope = {
   hz = 120,
   frame_height = 50,
   frame_width = 64,
-  volt_min = -3,
-  volt_max = 6.5
 }
 
 function Oscilloscope:new(options)
@@ -83,8 +80,8 @@ function Oscilloscope:act_on_intersections(callback)
 end
 
 function Oscilloscope:calculate_cycle_to_screen_proportions(v)
-  local range = (self.volt_max + (self.volt_min * -1))
-  return ((self.frame_height - self.height_offset) * ((range - (v + (self.volt_min * -1)))/range)) + (self.height_offset - 1)
+  local range = (params:get('cycle_max') + (params:get('cycle_min') * -1))
+  return ((self.frame_height - self.height_offset) * ((range - (v + (params:get('cycle_min') * -1)))/range)) + (self.height_offset - 1)
 end
 
 function Oscilloscope:_draw_cycle_step(step)

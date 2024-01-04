@@ -1,4 +1,5 @@
 Inputs = {
+  available_inputs = {},
   inputs = {}
 }
 
@@ -11,6 +12,10 @@ end
 
 function Inputs:add(input)
   table.insert(self.inputs, input)
+end
+
+function Inputs:replace_input(i, input)
+  self.inputs[i] = input
 end
 
 function Inputs:dirty()

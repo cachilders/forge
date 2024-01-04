@@ -2,9 +2,10 @@
 -- you know, for Crow
 -- 16bit [-5V,10V] range
 
+include('lib/utils')
+include('lib/midi-utils')
 include('lib/crow-input')
 include('lib/engine-output')
-include('lib/find-line-segment-overlap')
 include('lib/inputs')
 include('lib/lfo-input')
 include('lib/note')
@@ -14,7 +15,6 @@ include('lib/outputs')
 include('lib/oscilloscope')
 include('lib/params')
 include('lib/quantizer')
-include('lib/utils')
 
 LFO = require('lfo')
 musicutil = require('musicutil')
@@ -27,14 +27,8 @@ QUANT_WIDTH = 24
 SCREEN_WIDTH = 128
 HEIGHT_OFFSET = 5
 
-events_per_second = 120
 player_clock_div = 1
 generator_clock_div = 2
-time_arg = 1 / events_per_second
-event = 1
-octaves = 3
-volt_min = -3 
-volt_max = 6.5
 player_step = 1
 player_run = false
 
@@ -43,39 +37,39 @@ function init()
   init_oscilloscope()
   init_counters()
   init_inputs()
+  init_midi_connections()
   init_notes()
   init_outputs()
   init_quantizer()
-  adjust_sample_frequency(events_per_second)
 end
 
 function init_counters()
-  player_counter = metro.init(player_loop, get_player_time()/player_clock_div)
-  generator_counter = metro.init(generator_loop, get_player_time()/generator_clock_div)
-  oscilloscope_counter = metro.init(record_inputs_to_oscilloscope, time_arg)
+  player_counter = metro.init(player_loop, get_player_time(parameters.play_clock_mod_state.operator, params:get('play_clock_operand')))
+  generator_counter = metro.init(generator_loop, get_player_time(parameters.gen_clock_mod_state.operator, params:get('gen_clock_operand')))
+  oscilloscope_counter = metro.init(record_inputs_to_oscilloscope, 1 / params:get('hz'))
   generator_counter:start()
   oscilloscope_counter:start()
 end
 
 function init_inputs()
   inputs = Inputs:new()
-  crow_inputs = {
+  inputs.available_inputs.crow = {
     CrowInput:new({ source = crow.input[1] }),
     CrowInput:new({ source = crow.input[2] })
   }
-  lfo_inputs = {
-    LFOInput:new({ name = 'LFO Input 1', id = 'lfo_input_1', min = oscilloscope:get('volt_min'), max = oscilloscope:get('volt_max'), depth = .75 }),
-    LFOInput:new({ name = 'LFO Input 2', id = 'lfo_input_2', min = oscilloscope:get('volt_min'), max = oscilloscope:get('volt_max'), depth = .5, period = .5, phase = .5 })
+  inputs.available_inputs.lfo = {
+    LFOInput:new({ name = 'LFO Input 1', id = 'lfo_input_1', min = params:get('cycle_min'), max = params:get('cycle_max'), depth = .75, shape = 'tri', phase = .15}),
+    LFOInput:new({ name = 'LFO Input 2', id = 'lfo_input_2', min = params:get('cycle_min'), max = params:get('cycle_max'), depth = .5, period = .5, phase = .5 })
   }
 
-  for i = 1, #parameters.inputs do
-    if parameters.inputs[i] == parameters.input_sources[1] then
-      inputs:add(crow_inputs[i])
-      crow_inputs[i]:init()
-    elseif parameters.inputs[i] == parameters.input_sources[2] then
-      inputs:add(lfo_inputs[i])
-      lfo_inputs[i]:init()
+  for k, v in pairs(inputs.available_inputs) do
+    for i = 1, #v do
+      v[i]:init()
     end
+  end
+
+  for i = 1, #parameters.input_sources do
+    inputs:add(inputs.available_inputs[parameters.input_sources[i]][i])
   end
 end
 
@@ -86,7 +80,7 @@ function init_notes()
 end
 
 function init_oscilloscope()
-  oscilloscope = Oscilloscope:new({hz = events_per_second, frame_height = FRAME_HEIGHT, height_offset = HEIGHT_OFFSET, frame_width = FRAME_WIDTH, volt_min = volt_min, volt_max = volt_max})
+  oscilloscope = Oscilloscope:new({hz = params:get('hz'), frame_height = FRAME_HEIGHT, height_offset = HEIGHT_OFFSET, frame_width = FRAME_WIDTH})
   oscilloscope:init()
 end
 
@@ -99,12 +93,18 @@ function init_outputs()
 end
 
 function init_quantizer()
-  quantizer = Quantizer:new()
-  quantizer:generate_scale(octaves)
+  quantizer = Quantizer:new({octaves = params:get('octaves'), root = params:get('root'), scale = params:get('scale')})
+  quantizer:generate_scale()
 end
 
-function get_player_time()
-  return 60 / params:get('clock_tempo')
+function get_player_time(operator, operand)
+  local bpm = 60 / params:get('clock_tempo')
+
+  if operator == 'multiply' then
+    return bpm * operand
+  else
+    return bpm / operand
+  end
 end
 
 function record_inputs_to_oscilloscope()
@@ -120,8 +120,10 @@ function play_note(note)
 end
 
 function adjust_sample_frequency()
-  local time_arg = 1 / events_per_second
-  oscilloscope:set('hz', events_per_second)
+  local hz = params:get('hz')
+  local time_arg = 1 / hz
+  oscilloscope:set('hz', hz)
+
   if crow_input_1 and crow_input_2 then
     crow_input_1:get('source').mode('stream', time_arg)
     crow_input_2:get('source').mode('stream', time_arg)
@@ -130,9 +132,9 @@ end
 
 function convert_raw_voltage_to_note_number(v)
   -- temp
-  local negative_offset = math.abs(volt_min)
-  local volt_range = negative_offset + volt_max
-  local midi_range = octaves * 12
+  local negative_offset = math.abs(params:get('cycle_min'))
+  local volt_range = negative_offset + params:get('cycle_max')
+  local midi_range = params:get('octaves') * 12
   local multiplier = midi_range / volt_range
   local volt_abs = v + negative_offset
   local midi_floor = quantizer:get('root')
@@ -145,7 +147,7 @@ function place_note_on_intersection(x, y)
 end
 
 function generator_loop()
-  if player_step % 6 == 0 then -- TODO This gate should be variable
+  if player_step % params:get('event_modulo') == 0 then -- TODO This gate should be variable
     oscilloscope:act_on_intersections(place_note_on_intersection)
   end
   
@@ -189,8 +191,7 @@ end
 
 function enc(e, d)
   if e == 1 then
-    events_per_second = util.clamp(events_per_second + d, EPS_MIN, EPS_MAX)
-    bpm = events_per_second
+    params:delta('hz', d)
     adjust_sample_frequency()
   end
 end
@@ -217,6 +218,52 @@ function key(k, z)
   end
 end
 
+function refresh_app_state()
+  if parameters.generator_params_dirty then
+    generator_counter = metro.init(generator_loop, get_player_time(parameters.gen_clock_mod_state.operator, params:get('gen_clock_operand')))
+    generator_counter:start()
+    parameters.generator_params_dirty = false
+  end
+
+  if parameters.input_params_dirty then
+    for i = 1, #parameters.input_sources do
+      inputs:replace_input(i, inputs.available_inputs[parameters.input_sources[i]][i])
+    end
+
+    parameters.input_params_dirty = false
+  end
+
+  if parameters.output_params_dirty then
+
+    parameters.output_params_dirty = false
+  end
+
+  if parameters.oscilloscope_params_dirty then
+    adjust_sample_frequency()
+
+    parameters.oscilloscope_params_dirty = false
+  end
+
+  if parameters.player_params_dirty then
+    player_counter = metro.init(player_loop, get_player_time(parameters.play_clock_mod_state.operator, params:get('play_clock_operand')))
+    
+    if player_run then
+      player_counter:start()
+    end
+
+    parameters.player_params_dirty = false
+  end
+
+  if parameters.quantizer_params_dirty then
+    quantizer:set('octaves', params:get('octaves'))
+    quantizer:set('scale', params:get('scale'))
+    quantizer:set('root', params:get('root'))
+    quantizer:generate_scale()
+
+    parameters.quantizer_params_dirty = false
+  end
+end
+
 function draw_stuff()
   cycle_window_notes:draw_notes()
   quantizer_segment_notes:draw_notes()
@@ -231,6 +278,7 @@ end
 function redraw()
   screen.clear()
   
+  refresh_app_state()
   draw_stuff()
   
   screen.move(1, 60)

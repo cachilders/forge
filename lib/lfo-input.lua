@@ -35,7 +35,7 @@ function LFOInput:init()
     min = self.min,
     mode = self.mode,
     offset = self.offset,
-    period = 1,
+    period = self.period,
     phase = self.phase,
     ppqn = self.ppqn,
     reset_target = self.reset_target,
