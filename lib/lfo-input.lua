@@ -41,7 +41,7 @@ function LFOInput:init()
     reset_target = self.reset_target,
     shape = self.shape
   }
-
+  
   self.source:add_params(self.id, self.name, self.name)
   
   self.source:start()

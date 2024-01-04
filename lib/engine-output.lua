@@ -4,7 +4,7 @@ engine.name = 'PolyPerc'
 
 EngineOutput = {}
 
-setmetatable(EngineOutput, { __index = engine_output })
+setmetatable(EngineOutput, { __index = Output })
 
 function EngineOutput:new(options)
   local instance = options or {}

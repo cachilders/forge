@@ -5,9 +5,13 @@
 include('lib/utils')
 include('lib/midi-utils')
 include('lib/crow-input')
+include('lib/crow-output')
+include('lib/disting-output')
 include('lib/engine-output')
+include('lib/jf-output')
 include('lib/inputs')
 include('lib/lfo-input')
+include('lib/midi-output')
 include('lib/note')
 include('lib/notes')
 include('lib/output')
@@ -15,6 +19,7 @@ include('lib/outputs')
 include('lib/oscilloscope')
 include('lib/params')
 include('lib/quantizer')
+include('lib/wslashsynth-output')
 
 LFO = require('lfo')
 musicutil = require('musicutil')
@@ -99,7 +104,6 @@ end
 
 function get_player_time(operator, operand)
   local bpm = 60 / params:get('clock_tempo')
-
   if operator == 'multiply' then
     return bpm * operand
   else
@@ -222,6 +226,7 @@ function refresh_app_state()
   if parameters.generator_params_dirty then
     generator_counter = metro.init(generator_loop, get_player_time(parameters.gen_clock_mod_state.operator, params:get('gen_clock_operand')))
     generator_counter:start()
+    -- ^ This probably needs to be reconsidered
     parameters.generator_params_dirty = false
   end
 
@@ -234,13 +239,25 @@ function refresh_app_state()
   end
 
   if parameters.output_params_dirty then
+    local next_outputs = {}
+    -- outputs.outputs = next_outputs
+    -- add active outputs to outputs
+    -- which requires:
+    -- create midi outputs
+    -- create crow ouputs with and without unipolar offset
+    -- create disting outputs
+    -- create w outputs
+    -- create jf outputs
+    -- all of these outputs should be instantiated at load and midi kept current
+
 
     parameters.output_params_dirty = false
   end
 
   if parameters.oscilloscope_params_dirty then
     adjust_sample_frequency()
-
+    -- Update osc sample clock?
+    -- Bugs in the min/max scaling to viewport math
     parameters.oscilloscope_params_dirty = false
   end
 
