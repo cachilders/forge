@@ -1,6 +1,5 @@
 -- Forge
--- you know, for Crow
--- 16bit [-5V,10V] range
+-- WIP
 
 include('lib/utils')
 include('lib/midi-utils')
@@ -23,6 +22,7 @@ include('lib/wslashsynth-output')
 
 LFO = require('lfo')
 musicutil = require('musicutil')
+UI = require('ui')
 
 EPS_MIN = 100
 EPS_MAX = 600
@@ -46,6 +46,7 @@ function init()
   init_notes()
   init_outputs()
   init_quantizer()
+  init_transport_status()
 end
 
 function init_counters()
@@ -85,7 +86,7 @@ function init_notes()
 end
 
 function init_oscilloscope()
-  oscilloscope = Oscilloscope:new({hz = params:get('hz'), frame_height = FRAME_HEIGHT, height_offset = HEIGHT_OFFSET, frame_width = FRAME_WIDTH})
+  oscilloscope = Oscilloscope:new({frame_height = FRAME_HEIGHT, height_offset = HEIGHT_OFFSET, frame_width = FRAME_WIDTH})
   oscilloscope:init()
 end
 
@@ -100,6 +101,10 @@ end
 function init_quantizer()
   quantizer = Quantizer:new({octaves = params:get('octaves'), root = params:get('root'), scale = params:get('scale')})
   quantizer:generate_scale()
+end
+
+function init_transport_status()
+  transport_status = UI.PlaybackIcon.new(FRAME_WIDTH, FRAME_HEIGHT + HEIGHT_OFFSET, 5, 4)
 end
 
 function get_player_time(operator, operand)
@@ -128,8 +133,11 @@ function adjust_sample_frequency()
   local time_arg = 1 / hz
   oscilloscope:set('hz', hz)
 
-  if crow_input_1 and crow_input_2 then
+  if crow_input_1 then
     crow_input_1:get('source').mode('stream', time_arg)
+  end
+
+  if crow_input_2 then
     crow_input_2:get('source').mode('stream', time_arg)
   end
 end
@@ -194,10 +202,35 @@ function draw_y_boundaries()
 end
 
 function enc(e, d)
-  if e == 1 then
+  if shift and e == 1 then
     params:delta('hz', d)
     adjust_sample_frequency()
+  elseif shift and e == 2 then
+    params:delta('cycle_min', d)
+  elseif shift and e == 3 then
+    params:delta('cycle_max', d)
   end
+end
+
+function play()
+  player_run = true
+  player_counter:start()
+  transport_status.status = 1
+end
+
+function pause()
+  player_run = false
+  player_counter:stop()
+  transport_status.status = 3
+end
+
+function stop()
+  player_run = false
+  player_counter:stop()
+  quantizer_segment_notes:flush()
+  player_segment_notes:flush()
+  transport_status.status = 4
+  player_step = 1
 end
 
 function key(k, z)
@@ -210,15 +243,11 @@ function key(k, z)
   if k == 2 and z == 0 then
     print('K2')
   elseif k == 3 and z == 0 and player_run == false then
-    player_run = true
-    player_counter:start()
+    play()
   elseif k == 3 and z == 0 and player_run == true and shift ~= true  then
-    player_run = false
-    player_counter:stop()
+    pause()
   elseif k == 3 and z == 0 and player_run == true and shift == true  then
-    player_run = false
-    player_counter:stop()
-    player_step = 1
+    stop()
   end
 end
 
@@ -292,12 +321,13 @@ end
 function redraw()
   screen.clear()
   
+  transport_status:redraw()
   refresh_app_state()
   draw_stuff()
-  
-  screen.move(1, 60)
+
+  screen.move(1, FRAME_HEIGHT + (HEIGHT_OFFSET * 2))
   screen.text(''..oscilloscope:get('hz')..' Hz')
-  screen.move(FRAME_WIDTH + QUANT_WIDTH, 60)
+  screen.move(FRAME_WIDTH + QUANT_WIDTH, FRAME_HEIGHT + (HEIGHT_OFFSET * 2))
   screen.text(''..params:get('clock_tempo')..' BPM')
   
   screen.stroke()

@@ -42,6 +42,10 @@ function Notes:take_steps(connection_active)
   self:_replace(refreshed_notes)
 end
 
+function Notes:flush()
+  self:_replace({})
+end
+
 function Notes:draw_notes()
   for i, note in ipairs(self.notes) do
     if note:get('animating') then
