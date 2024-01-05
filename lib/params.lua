@@ -1,21 +1,24 @@
 parameters = {
   clock_operators = {'multiply', 'divide'},
-  gen_clock_mod_state = {},
-  play_clock_mod_state = {},
+  gen_clock_operator = '',
+  play_clock_operator = '',
   enabled_terms = {'off', 'on'},
   enabled_state = {false, true},
   generator_params_dirty = false,
   input_params_dirty = false,
   input_source_names = {'crow', 'lfo'},
   input_sources = {'', ''},
+  last_tempo = params:get('clock_tempo'),
   midi_devices = {},
   output_params_dirty = false,
   outputs = {},
   oscilloscope_params_dirty = false,
   player_params_dirty = false,
+  quantizer_note_snap = true,
+  quantizer_params_dirty = false,
+  quantizer_step_snap = true,
   scale = '',
-  scale_names = get_musicutil_scale_names(),
-  quantizer_params_dirty = false
+  scale_names = get_musicutil_scale_names()
 }
 
 function init_params()
@@ -51,27 +54,31 @@ function init_params()
   params:add_separator('generator', 'Note Generator')
 
   params:add_option('gen_clock_operator', 'Clock Operator', parameters.clock_operators, 2)
-  params:set_action('gen_clock_operator', function(i) parameters.gen_clock_mod_state.operator = parameters.clock_operators[i]; parameters.generator_params_dirty = true end)
-  params:add_number('gen_clock_operand', 'Clock Operand', 1, 64, 2)
+  params:set_action('gen_clock_operator', function(i) parameters.gen_clock_mod_operator = parameters.clock_operators[i]; parameters.generator_params_dirty = true end)
+  params:add_number('gen_clock_operand', 'Clock Operand', 1, 64, 1)
   params:set_action('gen_clock_operand', function() parameters.generator_params_dirty = true end)
   params:add_number('event_modulo', 'New Notes on Nth Tick', 1, FRAME_WIDTH, 6)
   params:set_action('event_modulo', function() parameters.generator_params_dirty = true end)
+  params:add_number('octaves', 'Octave Range', 1, 10, 3)
+  params:set_action('octaves', function() parameters.quantizer_params_dirty = true end)
+  params:add_number('root', 'Root Midi Note', 0, 127, 60)
+  params:set_action('root', function() parameters.quantizer_params_dirty = true end)
 
   params:add_separator('quatizer_space', '')
   params:add_separator('quantizer', 'Quantizer')
 
-  params:add_number('octaves', 'Octave Range', 1, 10, 3)
-  params:set_action('octaves', function() parameters.quantizer_params_dirty = true end)
+  params:add_option('quantizer_steps_snap', 'Snap Notes to Steps', parameters.enabled_terms, 2)
+  params:set_action('quantizer_steps_snap', function(i) parameters.quantizer_step_snap = parameters.enabled_state[i] end)
+  params:add_option('quantizer_note_snap', 'Snap Notes to Scale', parameters.enabled_terms, 2)
+  params:set_action('quantizer_note_snap', function(i) parameters.quantizer_note_snap = parameters.enabled_state[i]; refresh_params() end)
   params:add_option('scale', 'Scale Type', parameters.scale_names, 1)
   params:set_action('scale', function(i) parameters.scale = parameters.scale_names[i]; parameters.quantizer_params_dirty = true end)
-  params:add_number('root', 'Root Midi Note', 0, 127, 60)
-  params:set_action('root', function() parameters.quantizer_params_dirty = true end)
 
   params:add_separator('player_space', '')
   params:add_separator('player', 'Player Roll')
 
   params:add_option('play_clock_operator', 'Clock Operator', parameters.clock_operators, 1)
-  params:set_action('play_clock_operator', function(i) parameters.play_clock_mod_state.operator = parameters.clock_operators[i]; parameters.player_params_dirty = true end)
+  params:set_action('play_clock_operator', function(i) parameters.play_clock_mod_operator = parameters.clock_operators[i]; parameters.player_params_dirty = true end)
   params:add_number('play_clock_operand', 'Clock Operand', 1, 64, 1)
   params:set_action('play_clock_operand', function() parameters.player_params_dirty = true end)
 
@@ -172,6 +179,12 @@ function refresh_params()
     else
       params:hide('midi_device_'..i..'_output_channel')
     end
+  end
+
+  if parameters.quantizer_note_snap == true then
+    params:show('scale')
+  else
+    params:hide('scale')
   end
 
   _menu.rebuild_params()

@@ -49,8 +49,8 @@ function init()
 end
 
 function init_counters()
-  player_counter = metro.init(player_loop, get_player_time(parameters.play_clock_mod_state.operator, params:get('play_clock_operand')))
-  generator_counter = metro.init(generator_loop, get_player_time(parameters.gen_clock_mod_state.operator, params:get('gen_clock_operand')))
+  player_counter = metro.init(player_loop, get_player_time(parameters.play_clock_mod_operator, params:get('play_clock_operand')))
+  generator_counter = metro.init(generator_loop, get_player_time(parameters.gen_clock_mod_operator, params:get('gen_clock_operand')))
   oscilloscope_counter = metro.init(record_inputs_to_oscilloscope, 1 / params:get('hz'))
   generator_counter:start()
   oscilloscope_counter:start()
@@ -105,9 +105,9 @@ end
 function get_player_time(operator, operand)
   local bpm = 60 / params:get('clock_tempo')
   if operator == 'multiply' then
-    return bpm * operand
-  else
     return bpm / operand
+  else
+    return bpm * operand
   end
 end
 
@@ -223,10 +223,13 @@ function key(k, z)
 end
 
 function refresh_app_state()
+  if parameters.last_tempo ~= params:get('clock_tempo') then
+    parameters.generator_params_dirty = true
+    parameters.player_params_dirty = true
+  end
+  
   if parameters.generator_params_dirty then
-    generator_counter = metro.init(generator_loop, get_player_time(parameters.gen_clock_mod_state.operator, params:get('gen_clock_operand')))
-    generator_counter:start()
-    -- ^ This probably needs to be reconsidered
+    generator_counter.time = get_player_time(parameters.gen_clock_mod_operator, params:get('gen_clock_operand'))
     parameters.generator_params_dirty = false
   end
 
@@ -256,18 +259,12 @@ function refresh_app_state()
 
   if parameters.oscilloscope_params_dirty then
     adjust_sample_frequency()
-    -- Update osc sample clock?
-    -- Bugs in the min/max scaling to viewport math
+    oscilloscope_counter.time = 1 / params:get('hz')
     parameters.oscilloscope_params_dirty = false
   end
 
   if parameters.player_params_dirty then
-    player_counter = metro.init(player_loop, get_player_time(parameters.play_clock_mod_state.operator, params:get('play_clock_operand')))
-    
-    if player_run then
-      player_counter:start()
-    end
-
+    player_counter.time = get_player_time(parameters.play_clock_mod_operator, params:get('play_clock_operand'))
     parameters.player_params_dirty = false
   end
 
