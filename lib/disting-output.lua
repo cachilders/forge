@@ -11,12 +11,7 @@ function DistingOutput:new(options)
   return instance
 end
 
-function DistingOutput:config(pulse_time)
-  self.pulse_time = pulse_time
-end
-
 function DistingOutput:play_note(note)
-  
   clock.run(
     function()
       local id = note:get('quantized_note_number') or note:get('initial_note_number')

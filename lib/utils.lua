@@ -32,3 +32,10 @@ function get_musicutil_scale_names()
 
   return scales
 end
+
+function truncate_string(s, l)
+  if string.len(s) > l then
+    return ''..string.sub(s, 1, l-1)..'...'
+  end
+  return s
+end
