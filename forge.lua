@@ -50,8 +50,8 @@ function init()
 end
 
 function init_counters()
-  player_counter = metro.init(player_loop, get_player_time(parameters.play_clock_mod_operator, params:get('play_clock_operand')))
-  generator_counter = metro.init(generator_loop, get_player_time(parameters.gen_clock_mod_operator, params:get('gen_clock_operand')))
+  player_counter = metro.init(player_loop, get_time(parameters.play_clock_mod_operator, params:get('play_clock_operand')))
+  generator_counter = metro.init(generator_loop, get_time(parameters.gen_clock_mod_operator, params:get('gen_clock_operand')))
   oscilloscope_counter = metro.init(record_inputs_to_oscilloscope, 1 / params:get('hz'))
   generator_counter:start()
   oscilloscope_counter:start()
@@ -64,8 +64,8 @@ function init_inputs()
     CrowInput:new({ source = crow.input[2] })
   }
   inputs.available_inputs.lfo = {
-    LFOInput:new({ name = 'LFO Input 1', id = 'lfo_input_1', min = params:get('cycle_min'), max = params:get('cycle_max'), depth = .75, shape = 'tri', phase = .15}),
-    LFOInput:new({ name = 'LFO Input 2', id = 'lfo_input_2', min = params:get('cycle_min'), max = params:get('cycle_max'), depth = .5, period = .5, phase = .5 })
+    LFOInput:new({ name = 'LFO Input 1', id = 'lfo_input_1', min = params:get('cycle_min'), max = params:get('cycle_max'), depth = .75, period = .25, shape = 'tri', phase = .15}),
+    LFOInput:new({ name = 'LFO Input 2', id = 'lfo_input_2', min = params:get('cycle_min'), max = params:get('cycle_max'), depth = .7, period = .5, phase = .5 })
   }
 
   for k, v in pairs(inputs.available_inputs) do
@@ -94,6 +94,12 @@ function init_outputs()
   outputs = Outputs:new()
   log_output = Output:new()
   engine_output = EngineOutput:new()
+  crow_output = CrowOutput:new()
+  disting_output = DistingOutput:new()
+  jf_output = JFOutput:new()
+  wslashsynth_output = WSlashSynthOutput:new()
+  jf_output:init()
+  wslashsynth_output:init()
   outputs:add(log_output)
   outputs:add(engine_output)
 end
@@ -107,7 +113,7 @@ function init_transport_status()
   transport_status = UI.PlaybackIcon.new(FRAME_WIDTH, FRAME_HEIGHT + HEIGHT_OFFSET, 5, 4)
 end
 
-function get_player_time(operator, operand)
+function get_time(operator, operand)
   local bpm = 60 / params:get('clock_tempo')
   if operator == 'multiply' then
     return bpm / operand
@@ -128,17 +134,15 @@ function play_note(note)
   outputs:play_note(note)
 end
 
-function adjust_sample_frequency()
+function refresh_sample_frequency()
   local hz = params:get('hz')
   local time_arg = 1 / hz
   oscilloscope:set('hz', hz)
 
-  if crow_input_1 then
-    crow_input_1:get('source').mode('stream', time_arg)
-  end
-
-  if crow_input_2 then
-    crow_input_2:get('source').mode('stream', time_arg)
+  for i=1, #inputs.available_inputs.crow do
+    if parameters.input_sources[i] == parameters.input_source_names[1] then
+      inputs.available_inputs.crow[i]:get('source').mode('stream', time_arg)
+    end
   end
 end
 
@@ -204,7 +208,7 @@ end
 function enc(e, d)
   if shift and e == 1 then
     params:delta('hz', d)
-    adjust_sample_frequency()
+    refresh_sample_frequency()
   elseif shift and e == 2 then
     params:delta('cycle_min', d)
   elseif shift and e == 3 then
@@ -258,7 +262,7 @@ function refresh_app_state()
   end
   
   if parameters.generator_params_dirty then
-    generator_counter.time = get_player_time(parameters.gen_clock_mod_operator, params:get('gen_clock_operand'))
+    generator_counter.time = get_time(parameters.gen_clock_mod_operator, params:get('gen_clock_operand'))
     parameters.generator_params_dirty = false
   end
 
@@ -267,33 +271,53 @@ function refresh_app_state()
       inputs:replace_input(i, inputs.available_inputs[parameters.input_sources[i]][i])
     end
 
+    refresh_sample_frequency()
     parameters.input_params_dirty = false
   end
 
   if parameters.output_params_dirty then
-    local next_outputs = {}
-    -- outputs.outputs = next_outputs
-    -- add active outputs to outputs
-    -- which requires:
-    -- create midi outputs
-    -- create crow ouputs with and without unipolar offset
-    -- create disting outputs
-    -- create w outputs
-    -- create jf outputs
-    -- all of these outputs should be instantiated at load and midi kept current
+    outputs:set('outputs', {})
+    outputs:add(log_output)
 
+    if parameters.outputs.engine == true then
+      outputs:add(engine_output)
+    end
+
+    for i = 1, #parameters.midi_devices do
+      if parameters.midi_devices[i] then
+        -- add it
+      end
+    end
+
+    if parameters.outputs.crow == true then
+      crow_output:config(get_time(parameters.play_clock_mod_operator, params:get('play_clock_operand')))
+      outputs:add(crow_output)
+    end
+
+    if parameters.outputs.wslashsynth == true then
+      outputs:add(wslashsynth_output)
+    end
+
+    if parameters.outputs.jf == true then
+      outputs:add(jf_output)
+    end
+
+    if parameters.outputs.disting == true then
+      disting_output:config(get_time(parameters.play_clock_mod_operator, params:get('play_clock_operand')))
+      outputs:add(disting_output)
+    end
 
     parameters.output_params_dirty = false
   end
 
   if parameters.oscilloscope_params_dirty then
-    adjust_sample_frequency()
+    refresh_sample_frequency()
     oscilloscope_counter.time = 1 / params:get('hz')
     parameters.oscilloscope_params_dirty = false
   end
 
   if parameters.player_params_dirty then
-    player_counter.time = get_player_time(parameters.play_clock_mod_operator, params:get('play_clock_operand'))
+    player_counter.time = get_time(parameters.play_clock_mod_operator, params:get('play_clock_operand'))
     parameters.player_params_dirty = false
   end
 
@@ -322,7 +346,9 @@ function redraw()
   screen.clear()
   
   transport_status:redraw()
+
   refresh_app_state()
+  
   draw_stuff()
 
   screen.move(1, FRAME_HEIGHT + (HEIGHT_OFFSET * 2))

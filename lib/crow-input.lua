@@ -13,7 +13,7 @@ function CrowInput:new(options)
   return instance
 end
 
-function Input:init()
+function CrowInput:init()
   if self.source then
     self.source.stream = function(v) self:update(v) end
   end

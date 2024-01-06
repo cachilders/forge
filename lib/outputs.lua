@@ -9,6 +9,14 @@ function Outputs:new(options)
   return instance
 end
 
+function Outputs:get(k)
+  return self[k]
+end
+
+function Outputs:set(k, v)
+  self[k] = v
+end
+
 function Outputs:add(output)
   table.insert(self.outputs, output)
 end

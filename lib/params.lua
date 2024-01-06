@@ -25,10 +25,6 @@ function init_params()
   params:add_separator('app_name_space', '')
   params:add_separator('app_name', 'Forge')
 
-  -- SAVE
-  -- LOAD
-  -- RESET
-
   params:add_trigger('midi_panic', 'MIDI Panic')
   params:set_action('midi_panic', midi_panic)
 
@@ -43,9 +39,9 @@ function init_params()
   params:add_separator('oscilloscope_space', '')
   params:add_separator('oscilloscope', 'Oscilloscope')
 
-  params:add_number('cycle_min', 'Cycle Volts Min', -5, 10, -3)
+  params:add_number('cycle_min', 'Cycle Volts Min', -5, 10, -5)
   params:set_action('cycle_min', function() parameters.oscilloscope_params_dirty = true end)
-  params:add_number('cycle_max', 'Cycle Volts Max', -5, 10, 8)
+  params:add_number('cycle_max', 'Cycle Volts Max', -5, 10, 10)
   params:set_action('cycle_max', function() parameters.oscilloscope_params_dirty = true end)
   params:add_number('hz', 'Cycle Sampling Hz', 50, 500, 185)
   params:set_action('hz', function() parameters.oscilloscope_params_dirty = true end)
@@ -59,7 +55,7 @@ function init_params()
   params:set_action('gen_clock_operand', function() parameters.generator_params_dirty = true end)
   params:add_number('event_modulo', 'New Notes on Nth Tick', 1, FRAME_WIDTH, 6)
   params:set_action('event_modulo', function() parameters.generator_params_dirty = true end)
-  params:add_number('octaves', 'Octave Range', 1, 10, 3)
+  params:add_number('octaves', 'Octave Range', 1, 10, 2)
   params:set_action('octaves', function() parameters.quantizer_params_dirty = true end)
   params:add_number('root', 'Root Note', 0, 127, 48, function(param) return musicutil.note_num_to_name(param:get(), true) end)
   params:set_action('root', function() parameters.quantizer_params_dirty = true end)
@@ -91,7 +87,7 @@ function init_params()
   refresh_midi_params()
 
   for device = 1, #parameters.midi_devices do
-    params:add_option('midi_device_'..device..'_output', parameters.midi_devices[device].name, parameters.enabled_terms, 1)
+    params:add_option('midi_device_'..device..'_output', 'MIDI '..device..': '..parameters.midi_devices[device].name, parameters.enabled_terms, 1)
     params:set_action('midi_device_'..device..'_output',  function(i) parameters.midi_devices[device].enabled = parameters.enabled_state[i]; refresh_params(); parameters.output_params_dirty = true end)
     params:add_number('midi_device_'..device..'_output_channel', 'MIDI Channel', 1, 16, 1)
     params:set_action('midi_device_'..device..'_output_channel', function() parameters.output_params_dirty = true end)
@@ -105,13 +101,11 @@ function init_params()
   params:set_action('disting_output', function(i) parameters.outputs.disting = parameters.enabled_state[i]; parameters.output_params_dirty = true end)
   params:add_option('jf_output', 'Just Friends', parameters.enabled_terms, 1)
   params:set_action('jf_output', function(i) parameters.outputs.jf = parameters.enabled_state[i]; parameters.output_params_dirty = true end)
-  params:add_option('wslashsyn_output', 'W/ Synth', parameters.enabled_terms, 1)
-  params:set_action('wslashsyn_output', function(i) parameters.outputs.wslashsyn = parameters.enabled_state[i]; parameters.output_params_dirty = true end)
+  params:add_option('wslashsynth_output', 'W/ Synth', parameters.enabled_terms, 1)
+  params:set_action('wslashsynth_output', function(i) parameters.outputs.wslashsynth = parameters.enabled_state[i]; parameters.output_params_dirty = true end)
 
   params:add_separator('lfo_inputs_space', '')
   params:add_separator('lfo_inputs', 'Internal LFO Inputs')
-
-  params:default()
 
   refresh_params()
 
@@ -146,7 +140,7 @@ function refresh_params()
     params:show('crow_raw_out_unipolar')
     params:show('disting_output')
     params:show('jf_output')
-    params:show('wslashsyn_output')
+    params:show('wslashsynth_output')
   else
     params:hide('inputs_space')
     params:hide('inputs')
@@ -156,7 +150,7 @@ function refresh_params()
     params:hide('crow_raw_out_unipolar')
     params:hide('disting_output')
     params:hide('jf_output')
-    params:hide('wslashsyn_output')
+    params:hide('wslashsynth_output')
   end
 
   if parameters.input_sources[1] == parameters.input_source_names[2] or parameters.input_sources[2] == parameters.input_source_names[2] then
