@@ -12,7 +12,8 @@ LFOInput = {
   ppqn = 96,
   offset = 0,
   reset_target = 'center',
-  shape = 'sine'
+  shape = 'sine',
+  type = 'lfo'
 }
 
 setmetatable(LFOInput, { __index = Input })
@@ -34,12 +35,14 @@ function LFOInput:init()
     min = self.min,
     mode = self.mode,
     offset = self.offset,
-    period = 1,
+    period = self.period,
     phase = self.phase,
     ppqn = self.ppqn,
     reset_target = self.reset_target,
     shape = self.shape
   }
+  
+  self.source:add_params(self.id, self.name, self.name)
   
   self.source:start()
 end

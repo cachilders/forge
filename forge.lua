@@ -1,22 +1,28 @@
 -- Forge
--- you know, for Crow
--- 16bit [-5V,10V] range
+-- WIP
 
+include('lib/utils')
+include('lib/midi-utils')
 include('lib/crow-input')
+include('lib/crow-output')
+include('lib/disting-output')
 include('lib/engine-output')
-include('lib/find-line-segment-overlap')
+include('lib/jf-output')
 include('lib/inputs')
 include('lib/lfo-input')
+include('lib/midi-output')
 include('lib/note')
 include('lib/notes')
 include('lib/output')
 include('lib/outputs')
 include('lib/oscilloscope')
+include('lib/params')
 include('lib/quantizer')
-include('lib/utils')
+include('lib/wslashsynth-output')
 
 LFO = require('lfo')
 musicutil = require('musicutil')
+UI = require('ui')
 
 EPS_MIN = 100
 EPS_MAX = 600
@@ -26,49 +32,51 @@ QUANT_WIDTH = 24
 SCREEN_WIDTH = 128
 HEIGHT_OFFSET = 5
 
-events_per_second = 120
 player_clock_div = 1
 generator_clock_div = 2
-time_arg = 1 / events_per_second
-event = 1
-octaves = 3
-volt_min = -3 
-volt_max = 6.5
 player_step = 1
 player_run = false
 
 function init()
+  init_params()
   init_oscilloscope()
   init_counters()
   init_inputs()
+  init_midi_connections()
   init_notes()
   init_outputs()
   init_quantizer()
-  adjust_sample_frequency(events_per_second)
+  init_transport_status()
 end
 
 function init_counters()
-  player_counter = metro.init(player_loop, get_player_time()/player_clock_div)
-  generator_counter = metro.init(generator_loop, get_player_time()/generator_clock_div)
-  oscilloscope_counter = metro.init(record_inputs_to_oscilloscope, time_arg)
+  player_counter = metro.init(player_loop, get_time(parameters.play_clock_mod_operator, params:get('play_clock_operand')))
+  generator_counter = metro.init(generator_loop, get_time(parameters.gen_clock_mod_operator, params:get('gen_clock_operand')))
+  oscilloscope_counter = metro.init(record_inputs_to_oscilloscope, 1 / params:get('hz'))
   generator_counter:start()
   oscilloscope_counter:start()
 end
 
 function init_inputs()
   inputs = Inputs:new()
-  -- crow_input_1 = CrowInput:new({ source = crow.input[1] })
-  -- crow_input_2 = CrowInput:new({ source = crow.input[2] })
-  -- crow_input_1:init()
-  -- crow_input_2:init()
-  -- inputs:add(crow_input_1)
-  -- inputs:add(crow_input_2)
-  lfo_input_1 = LFOInput:new({ shape = 'sine', min = oscilloscope:get('volt_min'), max = oscilloscope:get('volt_max'), depth = .75 })
-  lfo_input_2 = LFOInput:new({ shape = 'tri', min = oscilloscope:get('volt_min'), max = oscilloscope:get('volt_max'), depth = .5, period = 1.7 })
-  lfo_input_1:init()
-  lfo_input_2:init()
-  inputs:add(lfo_input_1)
-  inputs:add(lfo_input_2)
+  inputs.available_inputs.crow = {
+    CrowInput:new({ source = crow.input[1] }),
+    CrowInput:new({ source = crow.input[2] })
+  }
+  inputs.available_inputs.lfo = {
+    LFOInput:new({ name = 'LFO Input 1', id = 'lfo_input_1', min = params:get('cycle_min'), max = params:get('cycle_max'), depth = .75, period = .25, shape = 'tri', phase = .15}),
+    LFOInput:new({ name = 'LFO Input 2', id = 'lfo_input_2', min = params:get('cycle_min'), max = params:get('cycle_max'), depth = .7, period = .5, phase = .5 })
+  }
+
+  for k, v in pairs(inputs.available_inputs) do
+    for i = 1, #v do
+      v[i]:init()
+    end
+  end
+
+  for i = 1, #parameters.input_sources do
+    inputs:add(inputs.available_inputs[parameters.input_sources[i]][i])
+  end
 end
 
 function init_notes()
@@ -78,7 +86,7 @@ function init_notes()
 end
 
 function init_oscilloscope()
-  oscilloscope = Oscilloscope:new({hz = events_per_second, frame_height = FRAME_HEIGHT, height_offset = HEIGHT_OFFSET, frame_width = FRAME_WIDTH, volt_min = volt_min, volt_max = volt_max})
+  oscilloscope = Oscilloscope:new({frame_height = FRAME_HEIGHT, height_offset = HEIGHT_OFFSET, frame_width = FRAME_WIDTH})
   oscilloscope:init()
 end
 
@@ -86,17 +94,32 @@ function init_outputs()
   outputs = Outputs:new()
   log_output = Output:new()
   engine_output = EngineOutput:new()
+  crow_output = CrowOutput:new()
+  disting_output = DistingOutput:new()
+  jf_output = JFOutput:new()
+  wslashsynth_output = WSlashSynthOutput:new()
+  jf_output:init()
+  wslashsynth_output:init()
   outputs:add(log_output)
   outputs:add(engine_output)
 end
 
 function init_quantizer()
-  quantizer = Quantizer:new()
-  quantizer:generate_scale(octaves)
+  quantizer = Quantizer:new({octaves = params:get('octaves'), root = params:get('root'), scale = params:get('scale')})
+  quantizer:generate_scale()
 end
 
-function get_player_time()
-  return 60 / params:get('clock_tempo')
+function init_transport_status()
+  transport_status = UI.PlaybackIcon.new(FRAME_WIDTH, FRAME_HEIGHT + HEIGHT_OFFSET, 5, 4)
+end
+
+function get_time(operator, operand)
+  local bpm = 60 / params:get('clock_tempo')
+  if operator == 'multiply' then
+    return bpm / operand
+  else
+    return bpm * operand
+  end
 end
 
 function record_inputs_to_oscilloscope()
@@ -111,20 +134,23 @@ function play_note(note)
   outputs:play_note(note)
 end
 
-function adjust_sample_frequency()
-  local time_arg = 1 / events_per_second
-  oscilloscope:set('hz', events_per_second)
-  if crow_input_1 and crow_input_2 then
-    crow_input_1:get('source').mode('stream', time_arg)
-    crow_input_2:get('source').mode('stream', time_arg)
+function refresh_sample_frequency()
+  local hz = params:get('hz')
+  local time_arg = 1 / hz
+  oscilloscope:set('hz', hz)
+
+  for i=1, #inputs.available_inputs.crow do
+    if parameters.input_sources[i] == parameters.input_source_names[1] then
+      inputs.available_inputs.crow[i]:get('source').mode('stream', time_arg)
+    end
   end
 end
 
 function convert_raw_voltage_to_note_number(v)
   -- temp
-  local negative_offset = math.abs(volt_min)
-  local volt_range = negative_offset + volt_max
-  local midi_range = octaves * 12
+  local negative_offset = math.abs(params:get('cycle_min'))
+  local volt_range = negative_offset + params:get('cycle_max')
+  local midi_range = params:get('octaves') * 12
   local multiplier = midi_range / volt_range
   local volt_abs = v + negative_offset
   local midi_floor = quantizer:get('root')
@@ -137,7 +163,7 @@ function place_note_on_intersection(x, y)
 end
 
 function generator_loop()
-  if player_step % 6 == 0 then -- TODO This gate should be variable
+  if player_step % params:get('event_modulo') == 0 then -- TODO This gate should be variable
     oscilloscope:act_on_intersections(place_note_on_intersection)
   end
   
@@ -154,13 +180,11 @@ function player_loop()
 end
 
 function draw_generator_barrier()
-  screen.level(1)
   screen.move(FRAME_WIDTH + 1, HEIGHT_OFFSET)
   screen.line_rel(0, FRAME_HEIGHT - HEIGHT_OFFSET)
 end
 
 function draw_quant_barrier()
-  screen.level(1)
   screen.move(FRAME_WIDTH + QUANT_WIDTH - 1, HEIGHT_OFFSET)
   screen.line_rel(0, FRAME_HEIGHT - HEIGHT_OFFSET)
   screen.move(FRAME_WIDTH + QUANT_WIDTH + 1, HEIGHT_OFFSET)
@@ -168,7 +192,6 @@ function draw_quant_barrier()
 end
 
 function draw_x_boundaries()
-  screen.level(1)
   screen.move(1, HEIGHT_OFFSET)
   screen.line_rel(0, FRAME_HEIGHT - HEIGHT_OFFSET)
   screen.move(SCREEN_WIDTH, HEIGHT_OFFSET)
@@ -176,7 +199,6 @@ function draw_x_boundaries()
 end
 
 function draw_y_boundaries()
-  screen.level(1)
   screen.move(1, HEIGHT_OFFSET)
   screen.line_rel(SCREEN_WIDTH, 0)
   screen.move(1, FRAME_HEIGHT)
@@ -184,11 +206,35 @@ function draw_y_boundaries()
 end
 
 function enc(e, d)
-  if e == 1 then
-    events_per_second = util.clamp(events_per_second + d, EPS_MIN, EPS_MAX)
-    bpm = events_per_second
-    adjust_sample_frequency()
+  if shift and e == 1 then
+    params:delta('hz', d)
+    refresh_sample_frequency()
+  elseif shift and e == 2 then
+    params:delta('cycle_min', d)
+  elseif shift and e == 3 then
+    params:delta('cycle_max', d)
   end
+end
+
+function play()
+  player_run = true
+  player_counter:start()
+  transport_status.status = 1
+end
+
+function pause()
+  player_run = false
+  player_counter:stop()
+  transport_status.status = 3
+end
+
+function stop()
+  player_run = false
+  player_counter:stop()
+  quantizer_segment_notes:flush()
+  player_segment_notes:flush()
+  transport_status.status = 4
+  player_step = 1
 end
 
 function key(k, z)
@@ -201,15 +247,87 @@ function key(k, z)
   if k == 2 and z == 0 then
     print('K2')
   elseif k == 3 and z == 0 and player_run == false then
-    player_run = true
-    player_counter:start()
+    play()
   elseif k == 3 and z == 0 and player_run == true and shift ~= true  then
-    player_run = false
-    player_counter:stop()
+    pause()
   elseif k == 3 and z == 0 and player_run == true and shift == true  then
-    player_run = false
-    player_counter:stop()
-    player_step = 1
+    stop()
+  end
+end
+
+function refresh_app_state()
+  if parameters.last_tempo ~= params:get('clock_tempo') then
+    parameters.generator_params_dirty = true
+    parameters.player_params_dirty = true
+  end
+  
+  if parameters.generator_params_dirty then
+    generator_counter.time = get_time(parameters.gen_clock_mod_operator, params:get('gen_clock_operand'))
+    parameters.generator_params_dirty = false
+  end
+
+  if parameters.input_params_dirty then
+    for i = 1, #parameters.input_sources do
+      inputs:replace_input(i, inputs.available_inputs[parameters.input_sources[i]][i])
+    end
+
+    refresh_sample_frequency()
+    parameters.input_params_dirty = false
+  end
+
+  if parameters.output_params_dirty then
+    outputs:set('outputs', {})
+    outputs:add(log_output)
+
+    if parameters.outputs.engine == true then
+      outputs:add(engine_output)
+    end
+
+    for i = 1, #parameters.midi_devices do
+      if parameters.midi_devices[i] then
+        -- add it
+      end
+    end
+
+    if parameters.outputs.crow == true then
+      crow_output:config(get_time(parameters.play_clock_mod_operator, params:get('play_clock_operand')))
+      outputs:add(crow_output)
+    end
+
+    if parameters.outputs.wslashsynth == true then
+      outputs:add(wslashsynth_output)
+    end
+
+    if parameters.outputs.jf == true then
+      outputs:add(jf_output)
+    end
+
+    if parameters.outputs.disting == true then
+      disting_output:config(get_time(parameters.play_clock_mod_operator, params:get('play_clock_operand')))
+      outputs:add(disting_output)
+    end
+
+    parameters.output_params_dirty = false
+  end
+
+  if parameters.oscilloscope_params_dirty then
+    refresh_sample_frequency()
+    oscilloscope_counter.time = 1 / params:get('hz')
+    parameters.oscilloscope_params_dirty = false
+  end
+
+  if parameters.player_params_dirty then
+    player_counter.time = get_time(parameters.play_clock_mod_operator, params:get('play_clock_operand'))
+    parameters.player_params_dirty = false
+  end
+
+  if parameters.quantizer_params_dirty then
+    quantizer:set('octaves', params:get('octaves'))
+    quantizer:set('scale', params:get('scale'))
+    quantizer:set('root', params:get('root'))
+    quantizer:generate_scale()
+
+    parameters.quantizer_params_dirty = false
   end
 end
 
@@ -227,11 +345,15 @@ end
 function redraw()
   screen.clear()
   
-  draw_stuff()
+  transport_status:redraw()
+
+  refresh_app_state()
   
-  screen.move(1, 60)
+  draw_stuff()
+
+  screen.move(1, FRAME_HEIGHT + (HEIGHT_OFFSET * 2))
   screen.text(''..oscilloscope:get('hz')..' Hz')
-  screen.move(FRAME_WIDTH + QUANT_WIDTH, 60)
+  screen.move(FRAME_WIDTH + QUANT_WIDTH, FRAME_HEIGHT + (HEIGHT_OFFSET * 2))
   screen.text(''..params:get('clock_tempo')..' BPM')
   
   screen.stroke()

@@ -4,7 +4,7 @@ engine.name = 'PolyPerc'
 
 EngineOutput = {}
 
-setmetatable(EngineOutput, { __index = engine_output })
+setmetatable(EngineOutput, { __index = Output })
 
 function EngineOutput:new(options)
   local instance = options or {}
@@ -14,7 +14,7 @@ function EngineOutput:new(options)
 end
 
 function EngineOutput:play_note(note)
-  local hz = musicutil.note_num_to_freq(note:get('quantized_note_number') or note:get('initial_note_number'))
+  local hz = musicutil.note_num_to_freq(note:get('quantized_note_number') and note:get('quantized_note_number')or note:get('initial_note_number'))
 
   engine.amp(1) -- TODO: velocity options
   engine.hz(hz)
