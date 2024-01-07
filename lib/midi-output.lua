@@ -1,7 +1,7 @@
 include('lib/output')
 
 MidiOutput = {
-  devices = {}
+  connections = {}
 }
 
 setmetatable(MidiOutput, { __index = Output })
@@ -14,21 +14,24 @@ function MidiOutput:new(options)
 end
 
 function MidiOutput:init()
-  for id, device in pairs(parameters.midi_devices) do
-    print(id, device.name)
+  for id, device_name in pairs(parameters.midi_device_identifiers) do
+    table.insert(self.connections, midi.connect(id))
   end
+end
+
+function MidiOutput:_connect_midi_device(id, device)
+  self.connection = midi.connect(id)
 end
 
 function MidiOutput:play_note(note)
   local note_number = parameters.quantizer_note_snap and note:get('quantized_note_number') or note:get('initial_note_number')
 
-  for id, device in pairs(parameters.midi_devices) do
-    if device.enabled and device.connection then
-      local connection, ch = device.connection, params:get('midi_device_'..id..'_output_channel')
-
+  for i = 1, #self.connections do
+    local connection = self.connections[i]
+    if parameters.outputs.midi[connection.device.port] then
+      ch = params:get('midi_device_'..connection.device.port..'_output_channel')
       clock.run(
         function()
-          print(note_number, ch, connection.note_on, id, device.name)
           connection:note_on(note_number, 127, ch)
           clock.sleep(self.pulse_time)
           connection:note_off(note_number, 127, ch)

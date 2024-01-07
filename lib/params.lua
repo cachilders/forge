@@ -9,9 +9,11 @@ parameters = {
   input_source_names = {'crow', 'lfo'},
   input_sources = {'', ''},
   last_tempo = params:get('clock_tempo'),
-  midi_devices = {},
+  midi_device_identifiers = {},
   output_params_dirty = false,
-  outputs = {},
+  outputs = {
+    midi = {}
+  },
   oscilloscope_params_dirty = false,
   player_params_dirty = false,
   quantizer_note_snap = true,
@@ -86,11 +88,10 @@ function init_params()
 
   refresh_midi_params()
 
-  for id, device in pairs(parameters.midi_devices) do
-    print('hello', id, id, truncate_string(device.name, 16))
-    params:add_option('midi_device_'..id..'_output', 'MIDI '..id..': '..truncate_string(device.name, 16), parameters.enabled_terms, 1)
-    params:set_action('midi_device_'..id..'_output',  function(i) device.enabled = parameters.enabled_state[i]; refresh_params(); parameters.output_params_dirty = true end)
-    params:add_number('midi_device_'..id..'_output_channel', 'MIDI '..id..'Channel:', 1, 16, 1)
+  for id, device_name in pairs(parameters.midi_device_identifiers) do
+    params:add_option('midi_device_'..id..'_output', 'MIDI '..id..': '..truncate_string(device_name, 16), parameters.enabled_terms, 1)
+    params:set_action('midi_device_'..id..'_output',  function(i) parameters.outputs.midi[id] = parameters.enabled_state[i]; refresh_params(); parameters.output_params_dirty = true end)
+    params:add_number('midi_device_'..id..'_output_channel', 'MIDI '..id..' Channel:', 1, 16, 1)
     params:set_action('midi_device_'..id..'_output_channel', function() parameters.output_params_dirty = true end)
   end
 
@@ -114,19 +115,15 @@ function init_params()
 end
 
 function refresh_midi_params()
-  -- TODO move the actual storage of the midi devices to a midi class and move the utils under it
   local devices = {}
   
-  for id, device in pairs(midi.devices) do
-    if parameters.midi_devices[id] and device.name == parameters.midi_devices[id].name then
-      devices[id] = parameters.midi_devices[id]
-    else
-      devices[id] = device
+  for i = 1, #midi.vports do
+    if midi.vports[i].name ~= 'none' then
+      devices[i] = midi.vports[i].name
     end
   end
 
-  parameters.midi_devices = devices
-  refresh_midi_connections()
+  parameters.midi_device_identifiers = devices
 end
 
 function refresh_params()
@@ -168,8 +165,8 @@ function refresh_params()
     params:hide('crow_raw_out_unipolar')
   end
 
-  for id, device in pairs(parameters.midi_devices) do
-    if device.enabled == true then
+  for id, device_name in pairs(parameters.midi_device_identifiers) do
+    if parameters.outputs.midi[id] == true then
       params:show('midi_device_'..id..'_output_channel')
     else
       params:hide('midi_device_'..id..'_output_channel')

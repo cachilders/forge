@@ -42,7 +42,6 @@ function init()
   init_oscilloscope()
   init_counters()
   init_inputs()
-  init_midi_connections()
   init_notes()
   init_outputs()
   init_quantizer()
@@ -285,7 +284,13 @@ function refresh_app_state()
       outputs:add(engine_output)
     end
 
-    if parameters.outputs.midi == true then
+    local midi_active = false
+
+    for id, enabled in pairs(parameters.outputs.midi) do
+      midi_active = enabled or midi_active
+    end
+
+    if midi_active == true then
       midi_output:config(get_time(parameters.play_clock_mod_operator, params:get('play_clock_operand')))
       outputs:add(midi_output)
     end
