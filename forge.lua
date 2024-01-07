@@ -1,11 +1,11 @@
 -- Forge
 -- A playable oscilloscope for
 -- Crow [-5v - 10v]
-
+--
 -- Also, it Works without Crow
 -- Default ins are internal LFOs
 -- Default out is PolyPerc
--- 
+--
 -- K3: Play/Pause the Player
 --     Roll + init the Forge
 -- K1 + K3: Stop/Clear Player Roll
@@ -152,7 +152,7 @@ function refresh_sample_frequency()
   local time_arg = 1 / hz
   oscilloscope:set('hz', hz)
 
-  for i=1, #inputs.available_inputs.crow do
+  for i = 1, #inputs.available_inputs.crow do
     if parameters.input_sources[i] == parameters.input_source_names[1] then
       inputs.available_inputs.crow[i]:get('source').mode('stream', time_arg)
     end
