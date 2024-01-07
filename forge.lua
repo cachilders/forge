@@ -2,6 +2,7 @@
 -- WIP
 
 include('lib/utils')
+include('lib/test/utils')
 include('lib/midi-utils')
 include('lib/crow-input')
 include('lib/crow-output')
@@ -24,20 +25,17 @@ LFO = require('lfo')
 musicutil = require('musicutil')
 UI = require('ui')
 
-EPS_MIN = 100
-EPS_MAX = 600
 FRAME_HEIGHT = 50
 FRAME_WIDTH = 64
 QUANT_WIDTH = 24
 SCREEN_WIDTH = 128
 HEIGHT_OFFSET = 5
 
-player_clock_div = 1
-generator_clock_div = 2
 player_step = 1
 player_run = false
 
 function init()
+  test_calculate_cycle_to_screen_proportions()
   init_params()
   init_oscilloscope()
   init_counters()
@@ -63,7 +61,7 @@ function init_inputs()
     CrowInput:new({ source = crow.input[2] })
   }
   inputs.available_inputs.lfo = {
-    LFOInput:new({ name = 'LFO Input 1', id = 'lfo_input_1', min = params:get('cycle_min'), max = params:get('cycle_max'), depth = .75, period = .25, shape = 'tri', phase = .15}),
+    LFOInput:new({ name = 'LFO Input 1', id = 'lfo_input_1', min = params:get('cycle_min'), max = params:get('cycle_max'), depth = .75, period = .25, shape = 'tri'}),
     LFOInput:new({ name = 'LFO Input 2', id = 'lfo_input_2', min = params:get('cycle_min'), max = params:get('cycle_max'), depth = .7, period = .5, phase = .5 })
   }
 
@@ -148,7 +146,6 @@ function refresh_sample_frequency()
 end
 
 function convert_raw_voltage_to_note_number(v)
-  -- temp
   local negative_offset = math.abs(params:get('cycle_min'))
   local volt_range = negative_offset + params:get('cycle_max')
   local midi_range = params:get('octaves') * 12
@@ -200,9 +197,9 @@ function draw_x_boundaries()
 end
 
 function draw_y_boundaries()
-  screen.move(1, HEIGHT_OFFSET)
+  screen.move(0, HEIGHT_OFFSET)
   screen.line_rel(SCREEN_WIDTH, 0)
-  screen.move(1, FRAME_HEIGHT)
+  screen.move(0, FRAME_HEIGHT + 1)
   screen.line_rel(SCREEN_WIDTH, 0)
 end
 

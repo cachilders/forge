@@ -1,5 +1,3 @@
--- include('lib/utils')
-
 Oscilloscope = {
   current_event = 1,
   cycles = {{}, {}},
@@ -79,8 +77,7 @@ function Oscilloscope:act_on_intersections(callback)
 end
 
 function Oscilloscope:calculate_cycle_to_screen_proportions(v)
-  local range = (params:get('cycle_max') + (params:get('cycle_min') * -1))
-  return ((self.frame_height - self.height_offset) * ((range - (v + (params:get('cycle_min') * -1)))/range)) + (self.height_offset - 1)
+  return calculate_cycle_to_screen_proportions(v, self.frame_height, self.height_offset, params:get('cycle_min'), params:get('cycle_max'))
 end
 
 function Oscilloscope:_draw_cycle_step(step)
