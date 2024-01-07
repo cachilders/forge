@@ -28,7 +28,7 @@ function MidiOutput:play_note(note)
 
   for i = 1, #self.connections do
     local connection = self.connections[i]
-    if parameters.outputs.midi[connection.device.port] then
+    if connection.device and parameters.outputs.midi[connection.device.port] then
       ch = params:get('midi_device_'..connection.device.port..'_output_channel')
       clock.run(
         function()
