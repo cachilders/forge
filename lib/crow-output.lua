@@ -18,14 +18,16 @@ function CrowOutput:config(pulse_time)
 end
 
 function CrowOutput:play_note(note)
+  local cycle_min = params:get('cycle_min')
+
   if parameters.quantizer_note_snap == true then 
     crow.output[1].volts = (note:get('quantized_note_number') - params:get('root')) / 12
   else
     crow.output[1].volts = (note:get('initial_note_number') - params:get('root')) / 12
   end
 
-  if parameters.crow_raw_out_unipolar == true then
-    crow.output[3].volts = note.raw_volts + params:get('cycle_min')
+  if parameters.crow_raw_out_unipolar == true and cycle_min < 0 then
+    crow.output[3].volts = note.raw_volts + (cycle_min * -1)
   else
     crow.output[3].volts = note.raw_volts
   end
