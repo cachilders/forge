@@ -105,6 +105,8 @@ function init_params()
   params:set_action('jf_output', function(i) parameters.outputs.jf = parameters.enabled_state[i]; parameters.output_params_dirty = true end)
   params:add_option('wslashsynth_output', 'W/ Synth', parameters.enabled_terms, 1)
   params:set_action('wslashsynth_output', function(i) parameters.outputs.wslashsynth = parameters.enabled_state[i]; parameters.output_params_dirty = true end)
+  params:add_option('log_output', 'Debug (FLASH WARNING)', parameters.enabled_terms, 1)
+  params:set_action('log_output', function(i) parameters.outputs.log = parameters.enabled_state[i]; parameters.output_params_dirty = true end)
 
   params:add_separator('lfo_inputs_space', '')
   params:add_separator('lfo_inputs', 'Internal LFO Inputs')

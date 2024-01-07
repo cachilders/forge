@@ -22,9 +22,5 @@ function Output:set(k, v)
 end
 
 function Output:play_note(note)
-  if parameters.quantizer_note_snap and note:get('quantized_note_number') then
-    print('Quantized Note number '.. note:get('quantized_note_number'))
-  else
-    print('Unquantized Note number '.. note:get('initial_note_number'))
-  end
+  -- DO NOTE STUFF
 end

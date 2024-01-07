@@ -1,5 +1,20 @@
 -- Forge
--- WIP
+-- A playable oscilloscope for
+-- Crow [-5v - 10v]
+--
+-- Also, it Works without Crow
+-- Default ins are internal LFOs
+-- Default out is PolyPerc
+--
+-- K3: Play/Pause the Player
+--     Roll + init the Forge
+-- K1 + K3: Stop/Clear Player Roll
+-- K1 + ENC1: Adjust Scope frquency
+-- K1 + ENC2: Trim the cycle floor
+-- K1 + ENC3: Trim the cycle roof
+-- Params: Inputs, Outputs,
+--         and Kitchen Sinks
+
 
 include('lib/utils')
 include('lib/test/utils')
@@ -11,10 +26,10 @@ include('lib/engine-output')
 include('lib/jf-output')
 include('lib/inputs')
 include('lib/lfo-input')
+include('lib/log-output')
 include('lib/midi-output')
 include('lib/note')
 include('lib/notes')
-include('lib/output')
 include('lib/outputs')
 include('lib/oscilloscope')
 include('lib/params')
@@ -62,7 +77,7 @@ function init_inputs()
   }
   inputs.available_inputs.lfo = {
     LFOInput:new({ name = 'LFO Input 1', id = 'lfo_input_1', min = params:get('cycle_min'), max = params:get('cycle_max'), depth = .75, period = .25, shape = 'tri'}),
-    LFOInput:new({ name = 'LFO Input 2', id = 'lfo_input_2', min = params:get('cycle_min'), max = params:get('cycle_max'), depth = .7, period = .5, phase = .5 })
+    LFOInput:new({ name = 'LFO Input 2', id = 'lfo_input_2', min = params:get('cycle_min'), max = params:get('cycle_max'), depth = .6, period = .5, phase = .9 })
   }
 
   for k, v in pairs(inputs.available_inputs) do
@@ -89,7 +104,7 @@ end
 
 function init_outputs()
   outputs = Outputs:new()
-  log_output = Output:new()
+  log_output = LogOutput:new()
   engine_output = EngineOutput:new()
   crow_output = CrowOutput:new()
   disting_output = DistingOutput:new()
@@ -99,7 +114,6 @@ function init_outputs()
   jf_output:init()
   midi_output:init()
   wslashsynth_output:init()
-  outputs:add(log_output)
   outputs:add(engine_output)
 end
 
@@ -138,7 +152,7 @@ function refresh_sample_frequency()
   local time_arg = 1 / hz
   oscilloscope:set('hz', hz)
 
-  for i=1, #inputs.available_inputs.crow do
+  for i = 1, #inputs.available_inputs.crow do
     if parameters.input_sources[i] == parameters.input_source_names[1] then
       inputs.available_inputs.crow[i]:get('source').mode('stream', time_arg)
     end
@@ -201,6 +215,15 @@ function draw_y_boundaries()
   screen.line_rel(SCREEN_WIDTH, 0)
   screen.move(0, FRAME_HEIGHT + 1)
   screen.line_rel(SCREEN_WIDTH, 0)
+end
+
+function draw_text()
+  screen.level(5)
+  screen.move(1, FRAME_HEIGHT + (HEIGHT_OFFSET * 2))
+  screen.text(''..params:get('hz')..' Hz')
+  screen.move(FRAME_WIDTH + QUANT_WIDTH, FRAME_HEIGHT + (HEIGHT_OFFSET * 2))
+  screen.text(''..params:get('clock_tempo')..' BPM')
+  screen.level(15)
 end
 
 function enc(e, d)
@@ -275,7 +298,6 @@ function refresh_app_state()
 
   if parameters.output_params_dirty then
     outputs:set('outputs', {})
-    outputs:add(log_output)
 
     if parameters.outputs.engine == true then
       outputs:add(engine_output)
@@ -307,6 +329,10 @@ function refresh_app_state()
 
     if parameters.outputs.disting == true then
       outputs:add(disting_output)
+    end
+
+    if parameters.outputs.log == true then
+      outputs:add(log_output)
     end
 
     parameters.output_params_dirty = false
@@ -342,6 +368,7 @@ function draw_stuff()
   draw_quant_barrier()
   draw_x_boundaries()
   draw_y_boundaries()
+  draw_text()
 end
 
 function redraw()
@@ -354,12 +381,7 @@ function redraw()
   refresh_app_state()
   
   draw_stuff()
-
-  screen.move(1, FRAME_HEIGHT + (HEIGHT_OFFSET * 2))
-  screen.text(''..oscilloscope:get('hz')..' Hz')
-  screen.move(FRAME_WIDTH + QUANT_WIDTH, FRAME_HEIGHT + (HEIGHT_OFFSET * 2))
-  screen.text(''..params:get('clock_tempo')..' BPM')
-  
+ 
   screen.stroke()
   screen.update()
 end
