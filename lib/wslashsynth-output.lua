@@ -16,7 +16,6 @@ function WSlashSynthOutput:init()
 end
 
 function WSlashSynthOutput:play_note(note)
-  print('Playing wsynth')
   if parameters.quantizer_note_snap == true then 
     crow.ii.wsyn.play_note((note:get('quantized_note_number')  - params:get('root'))/ 12, 5)
   else

@@ -42,7 +42,6 @@ function init()
   init_oscilloscope()
   init_counters()
   init_inputs()
-  init_midi_connections()
   init_notes()
   init_outputs()
   init_quantizer()
@@ -97,8 +96,10 @@ function init_outputs()
   crow_output = CrowOutput:new()
   disting_output = DistingOutput:new()
   jf_output = JFOutput:new()
+  midi_output = MidiOutput:new()
   wslashsynth_output = WSlashSynthOutput:new()
   jf_output:init()
+  midi_output:init()
   wslashsynth_output:init()
   outputs:add(log_output)
   outputs:add(engine_output)
@@ -283,10 +284,15 @@ function refresh_app_state()
       outputs:add(engine_output)
     end
 
-    for i = 1, #parameters.midi_devices do
-      if parameters.midi_devices[i] then
-        -- add it
-      end
+    local midi_active = false
+
+    for id, enabled in pairs(parameters.outputs.midi) do
+      midi_active = enabled or midi_active
+    end
+
+    if midi_active == true then
+      midi_output:config(get_time(parameters.play_clock_mod_operator, params:get('play_clock_operand')))
+      outputs:add(midi_output)
     end
 
     if parameters.outputs.crow == true then
@@ -303,7 +309,6 @@ function refresh_app_state()
     end
 
     if parameters.outputs.disting == true then
-      disting_output:config(get_time(parameters.play_clock_mod_operator, params:get('play_clock_operand')))
       outputs:add(disting_output)
     end
 
@@ -345,7 +350,9 @@ end
 function redraw()
   screen.clear()
   
-  transport_status:redraw()
+  if transport_status then
+    transport_status:redraw()
+  end
 
   refresh_app_state()
   
