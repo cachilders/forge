@@ -37,7 +37,15 @@ function calculate_cycle_to_screen_proportions(v, frame_height, frame_height_off
   local regulated_voltage = regulate_voltage(v, cycle_min, cycle_max)
   local offset_volts = regulated_voltage + offset
   return (scale_operand * (cycle_range - offset_volts)) + frame_height_offset
-  -- return ((frame_height - frame_height_offset) * ((range - (v + (cycle_min * -1)))/cycle_range)) + (frame_height_offset - 1)
+end
+
+function scale_to_unipolar_output_range(v, cycle_min, cycle_max)
+  local offset = (cycle_min * -1)
+  local cycle_range = cycle_max + offset
+  -- using the cycle_max for the output range rather than 10v; may revisit
+  local scale_operand = cycle_max / cycle_range
+  local offset_volts = v + offset
+  return offset_volts * scale_operand
 end
 
 function get_musicutil_scale_names()
