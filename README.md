@@ -4,9 +4,9 @@ A playable oscilloscope for [norns](https://monome.org/docs/norns/) and [crow](h
 ![animated demonstration](./assets/images/forge.gif)
 
 ## What it does
-In a nutshell it's a note making machine, drawing the low frequency cycles it receives from an attached crow's inputs or a pair of internal LFOs or a combination of the two, and spawning notes at regular (configurable) cadence where the lines intersect.
+In a nutshell it's a note making machine, drawing the low frequency cycles it receives from an attached crow's inputs or a pair of internal LFOs or a combination of the two, and spawning notes at a regular (configurable) cadence where the lines intersect.
 
-From there the newly formed notes are conveyed through optional step and scale quantization and eventually played into a dealer's choice of inputs of the engine, i2c, and/or MIDI varieties.
+From there the newly formed notes are conveyed through optional step and scale quantization and eventually played into a dealer's choice of outputs of the engine, i2c, and/or MIDI varieties.
 
 Transport is controlled by K3, and K1 + K3 lets you stop and flush the player roll. Speaking of K1 combos, there are some immediate controls for fine-tuning the oscilloscope. K1 + ENC1 adjusts the sample frequency. K1 + ENC2/3 trims the legroom and headroom respectively. Most everything else can be controlled by parameters. 
 
