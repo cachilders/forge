@@ -1,14 +1,20 @@
 -- Forge
--- A playable oscilloscope for Norns and Crow
--- (Works fine without Crow)
+-- A playable oscilloscope for
+-- Crow [-5v - 10v]
+
+-- Also, it Works without Crow
+-- Default ins are internal LFOs
+-- Default out is PolyPerc
 -- 
--- K3: Play/Pause the Player Roll +
---     init the note generator (forge)
--- K1 + K3: Stop and Clear Player Roll
--- K1 + ENC1: Adjust scope sample frequency
+-- K3: Play/Pause the Player
+--     Roll + init the Forge
+-- K1 + K3: Stop/Clear Player Roll
+-- K1 + ENC1: Adjust Scope frquency
 -- K1 + ENC2: Trim the cycle floor
--- K1 + ENC3: Trim the cycle ceiling
--- Params: Inputs, Outputs, Kitchen Sinks
+-- K1 + ENC3: Trim the cycle roof
+-- Params: Inputs, Outputs,
+--         and Kitchen Sinks
+
 
 include('lib/utils')
 include('lib/test/utils')
