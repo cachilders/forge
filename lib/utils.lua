@@ -24,6 +24,22 @@ function find_line_segment_overlap (ax, ay, bx, by, cx, cy, dx, dy) -- start end
     return nil
 end
 
+function regulate_voltage(v, min, max)
+  if v < min then return min end
+  if v > max then return max end
+  return v
+end
+
+function calculate_cycle_to_screen_proportions(v, frame_height, frame_height_offset, cycle_min, cycle_max)
+  local offset = (cycle_min * -1)
+  local cycle_range = cycle_max + offset
+  local scale_operand = (frame_height - frame_height_offset) / cycle_range
+  local regulated_voltage = regulate_voltage(v, cycle_min, cycle_max)
+  local offset_volts = regulated_voltage + offset
+  return (scale_operand * (cycle_range - offset_volts)) + frame_height_offset
+  -- return ((frame_height - frame_height_offset) * ((range - (v + (cycle_min * -1)))/cycle_range)) + (frame_height_offset - 1)
+end
+
 function get_musicutil_scale_names()
   local scales = {}
   for i=1, #musicutil.SCALES do
