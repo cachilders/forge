@@ -10,7 +10,7 @@ From there the newly formed notes are conveyed through optional step and scale q
 
 Transport is controlled by K3, and K1 + K3 lets you stop and flush the player roll. Speaking of K1 combos, there are some immediate controls for fine-tuning the oscilloscope. K1 + ENC1 adjusts the sample frequency. K1 + ENC2/3 trims the legroom and headroom respectively. Most everything else can be controlled by parameters. 
 
-A note on the crow outputs. They're disabled initially, but should you use them: 2 and 4 are gates. 1 is a frequency derived from the MIDI note created by the generator (quantized or unquantized per param). 3 is the raw frequency of the graph intersection, optionally offset to be unipolar.
+A note on the crow outputs: they're disabled initially, but should you use them, 2 and 4 are gates. 1 is a frequency derived from the MIDI note created by the generator (quantized or unquantized per param). 3 is the raw frequency of the graph intersection, optionally offset to be unipolar.
 
 That's it. The rest is for exploration. I hope it's all smooth sailing, but bug reports and feature requests are welcome.
 
