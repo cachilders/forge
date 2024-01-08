@@ -1,4 +1,4 @@
-# Forge v0.999
+# Forge
 A playable oscilloscope for [norns](https://monome.org/docs/norns/) and [crow](https://monome.org/docs/crow/) that works just as well without crow if you prefer.
 
 ![animated demonstration](./assets/images/forge.gif)
