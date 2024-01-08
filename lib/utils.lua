@@ -39,11 +39,16 @@ function calculate_cycle_to_screen_proportions(v, frame_height, frame_height_off
   return (scale_operand * (cycle_range - offset_volts)) + frame_height_offset
 end
 
-function scale_to_unipolar_output_range(v, cycle_min, cycle_max)
-  local offset = (cycle_min * -1)
-  local cycle_range = cycle_max + offset
-  -- using the cycle_max for the output range rather than 10v; may revisit
-  local scale_operand = cycle_max / cycle_range
+function scale_to_unipolar_output_range(v, output_min, output_max)
+  -- Using the crow range, may revisit with trimming, but there are too many assumptions
+  -- To wit: output range is the limits of the device, not the output of the method.
+  if output_min >= 0 and v >= 0 then return v end
+  if v < output_min then return 0 end
+
+  local offset = math.abs(output_min)
+  local output_range = output_max + offset
+
+  local scale_operand = output_max / output_range
   local offset_volts = v + offset
   return offset_volts * scale_operand
 end
