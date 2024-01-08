@@ -37,7 +37,20 @@ function calculate_cycle_to_screen_proportions(v, frame_height, frame_height_off
   local regulated_voltage = regulate_voltage(v, cycle_min, cycle_max)
   local offset_volts = regulated_voltage + offset
   return (scale_operand * (cycle_range - offset_volts)) + frame_height_offset
-  -- return ((frame_height - frame_height_offset) * ((range - (v + (cycle_min * -1)))/cycle_range)) + (frame_height_offset - 1)
+end
+
+function scale_to_unipolar_output_range(v, output_min, output_max)
+  -- Using the crow range, may revisit with trimming, but there are too many assumptions
+  -- To wit: output range is the limits of the device, not the output of the method.
+  if output_min >= 0 and v >= 0 then return v end
+  if v < output_min then return 0 end
+
+  local offset = math.abs(output_min)
+  local output_range = output_max + offset
+
+  local scale_operand = output_max / output_range
+  local offset_volts = v + offset
+  return offset_volts * scale_operand
 end
 
 function get_musicutil_scale_names()

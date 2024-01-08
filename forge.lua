@@ -50,7 +50,7 @@ player_step = 1
 player_run = false
 
 function init()
-  test_calculate_cycle_to_screen_proportions()
+  init_tests()
   init_params()
   init_oscilloscope()
   init_counters()
@@ -59,6 +59,11 @@ function init()
   init_outputs()
   init_quantizer()
   init_transport_status()
+end
+
+function init_tests()
+  test_calculate_cycle_to_screen_proportions()
+  test_scale_to_unipolar_output_range()
 end
 
 function init_counters()
