@@ -30,8 +30,12 @@ function Quantizer:snap_note(note)
     local quantized_note_number = musicutil.snap_note_to_array(note:get('initial_note_number'), self.scale)
     note:set('quantized_note_number', quantized_note_number)
   end
-  
+
   if parameters.quantizer_step_snap then
-    note:set('x_pos', note:get('x_pos') + (note:get('x_pos') % self.snap_to))
+    local step_adjustment = 0
+    if note:get('x_pos') % self.snap_to > 0 then
+      step_adjustment = self.snap_to - (note:get('x_pos') % self.snap_to)
+    end
+    note:set('x_pos', note:get('x_pos') + step_adjustment)
   end
 end

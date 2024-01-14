@@ -27,7 +27,7 @@ function Notes:take_steps(connection_active)
   local refreshed_notes = {}
 
   for i, note in ipairs(self.notes) do
-    if note:get('x_pos') < self.max_step - 1 then
+    if note:get('x_pos') < self.max_step - 1 - self.step_by then
       note:take_step(self.step_by)
       table.insert(refreshed_notes, note)
     else

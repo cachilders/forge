@@ -180,7 +180,7 @@ function place_note_on_intersection(x, y)
 end
 
 function generator_loop()
-  if player_step % params:get('event_modulo') == 0 then -- TODO This gate should be variable
+  if player_step % params:get('event_modulo') == 0 then
     oscilloscope:act_on_intersections(place_note_on_intersection)
   end
   
