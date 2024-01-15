@@ -23,7 +23,7 @@ end
 function CrowOutput:play_note(note)
   local cycle_min = params:get('cycle_min')
 
-  if parameters.quantizer_note_snap == true then 
+  if parameters.quantizer_note_snap == true and note:get('quantized_note_number') then 
     crow.output[1].volts = (note:get('quantized_note_number') - params:get('root')) / 12
   else
     crow.output[1].volts = (note:get('initial_note_number') - params:get('root')) / 12
