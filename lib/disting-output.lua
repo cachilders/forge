@@ -16,7 +16,7 @@ function DistingOutput:play_note(note)
     function()
       local id = note:get('quantized_note_number') or note:get('initial_note_number')
 
-      if parameters.quantizer_note_snap == true then 
+      if parameters.quantizer_note_snap == true  and note:get('quantized_note_number') then 
         crow.ii.disting.note_pitch(id, (note:get('quantized_note_number') - params:get('root')) / 12)
       else
         crow.ii.disting.note_pitch(id, (note:get('initial_note_number') - params:get('root')) / 12)
