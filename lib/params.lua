@@ -105,6 +105,12 @@ function init_params()
   params:set_action('jf_output', function(i) parameters.outputs.jf = parameters.enabled_state[i]; parameters.output_params_dirty = true end)
   params:add_option('wslashsynth_output', 'W/ Synth', parameters.enabled_terms, 1)
   params:set_action('wslashsynth_output', function(i) parameters.outputs.wslashsynth = parameters.enabled_state[i]; parameters.output_params_dirty = true end)
+  params:add_option('nb_output', 'n.b.', parameters.enabled_terms, 1)
+  params:set_action('nb_output', function(i) parameters.outputs.nb = parameters.enabled_state[i]; refresh_params(); parameters.output_params_dirty = true end)
+
+  nb:add_param('nb_voice', 'n.b. Voice')
+  nb:add_player_params()
+  
   params:add_option('log_output', 'Debug (FLASH WARNING)', parameters.enabled_terms, 1)
   params:set_action('log_output', function(i) parameters.outputs.log = parameters.enabled_state[i]; parameters.output_params_dirty = true end)
 
@@ -165,6 +171,12 @@ function refresh_params()
     params:show('crow_raw_out_unipolar')
   else
     params:hide('crow_raw_out_unipolar')
+  end
+
+  if parameters.outputs.nb == true then
+    params:show('nb_voice')
+  else
+    params:hide('nb_voice')
   end
 
   for id, device_name in pairs(parameters.midi_device_identifiers) do

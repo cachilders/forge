@@ -28,6 +28,7 @@ include('lib/inputs')
 include('lib/lfo-input')
 include('lib/log-output')
 include('lib/midi-output')
+include('lib/nb-output')
 include('lib/note')
 include('lib/notes')
 include('lib/outputs')
@@ -39,6 +40,7 @@ include('lib/wslashsynth-output')
 LFO = require('lfo')
 musicutil = require('musicutil')
 UI = require('ui')
+nb = require('forge/lib/nb/lib/nb')
 
 FRAME_HEIGHT = 50
 FRAME_WIDTH = 64
@@ -50,6 +52,7 @@ player_step = 1
 player_run = false
 
 function init()
+  nb:init()
   init_tests()
   init_params()
   init_oscilloscope()
@@ -115,6 +118,7 @@ function init_outputs()
   disting_output = DistingOutput:new()
   jf_output = JFOutput:new()
   midi_output = MidiOutput:new()
+  nb_output = NBOutput:new()
   wslashsynth_output = WSlashSynthOutput:new()
   jf_output:init()
   midi_output:init()
@@ -303,12 +307,24 @@ function refresh_app_state()
 
   if parameters.output_params_dirty then
     outputs:set('outputs', {})
+    local midi_active = false
+
+    if parameters.outputs.crow == true then
+      crow_output:config(get_time(parameters.play_clock_mod_operator, params:get('play_clock_operand')))
+      outputs:add(crow_output)
+    end
+
+    if parameters.outputs.disting == true then
+      outputs:add(disting_output)
+    end
 
     if parameters.outputs.engine == true then
       outputs:add(engine_output)
     end
-
-    local midi_active = false
+    
+    if parameters.outputs.jf == true then
+      outputs:add(jf_output)
+    end
 
     for id, enabled in pairs(parameters.outputs.midi) do
       midi_active = enabled or midi_active
@@ -318,26 +334,17 @@ function refresh_app_state()
       midi_output:config(get_time(parameters.play_clock_mod_operator, params:get('play_clock_operand')))
       outputs:add(midi_output)
     end
-
-    if parameters.outputs.crow == true then
-      crow_output:config(get_time(parameters.play_clock_mod_operator, params:get('play_clock_operand')))
-      outputs:add(crow_output)
-    end
-
-    if parameters.outputs.wslashsynth == true then
-      outputs:add(wslashsynth_output)
-    end
-
-    if parameters.outputs.jf == true then
-      outputs:add(jf_output)
-    end
-
-    if parameters.outputs.disting == true then
-      outputs:add(disting_output)
-    end
-
+    
     if parameters.outputs.log == true then
       outputs:add(log_output)
+    end
+    
+    if parameters.outputs.nb == true then
+      outputs:add(nb_output)
+    end
+    
+    if parameters.outputs.wslashsynth == true then
+      outputs:add(wslashsynth_output)
     end
 
     parameters.output_params_dirty = false
